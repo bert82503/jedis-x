@@ -11,7 +11,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 简单实现{@link Future}接口，仅用于传递返回结果，为了兼容{@link cache.service.memcached.MemcachedService MemcachedService}接口的返回结果。
+ * 简单实现{@link Future}接口，仅用于传递返回结果，为了兼容{@link cache.service.MemcachedService MemcachedService}接口的返回结果。
  * 
  * @author huagang.li 2014年12月17日 上午11:38:17
  */

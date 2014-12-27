@@ -5,7 +5,7 @@
  * use it only in accordance with the terms of the license agreement you entered
  * into with FraudMetrix.cn.
  */
-package cache.service.memcached.impl;
+package cache.service.impl;
 
 import java.util.concurrent.Future;
 
@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import cache.service.memcached.MemcachedService;
+import cache.service.MemcachedService;
 
 /**
  * Memcached服务实现，继承自{@link MemcachedService}。

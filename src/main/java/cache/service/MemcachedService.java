@@ -5,11 +5,9 @@
  * use it only in accordance with the terms of the license agreement you entered
  * into with FraudMetrix.cn.
  */
-package cache.service.memcached;
+package cache.service;
 
 import java.util.concurrent.Future;
-
-import cache.service.ShardedService;
 
 /**
  * 封装<a href="http://memcached.org">Memcached</a>客户端，并增加开关功能。

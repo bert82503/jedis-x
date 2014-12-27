@@ -5,13 +5,11 @@
  * use it only in accordance with the terms of the license agreement you entered
  * into with FraudMetrix.cn.
  */
-package cache.service.redis;
+package cache.service;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import cache.service.ShardedService;
 
 /**
  * 封装<a href="http://redis.io">Redis</a>客户端，并增加开关功能和资源关闭功能。

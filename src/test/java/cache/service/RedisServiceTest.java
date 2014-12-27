@@ -5,7 +5,7 @@
  * use it only in accordance with the terms of the license agreement you entered
  * into with FraudMetrix.cn.
  */
-package cache.service.redis;
+package cache.service;
 
 import static org.testng.Assert.assertEquals;
 
@@ -20,9 +20,9 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import cache.service.redis.RedisService;
+import cache.service.RedisService;
+import cache.service.impl.JedisServiceImpl;
 import redis.client.jedis.CustomShardedJedisPool;
-import redis.client.jedis.JedisServiceImpl;
 import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean;
 import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean.PoolBehaviour;
 import redis.client.util.RedisConfigUtils;

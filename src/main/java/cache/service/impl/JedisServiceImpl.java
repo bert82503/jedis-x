@@ -5,7 +5,7 @@
  * use it only in accordance with the terms of the license agreement you entered
  * into with FraudMetrix.cn.
  */
-package redis.client.jedis;
+package cache.service.impl;
 
 import java.util.Collections;
 import java.util.List;
@@ -19,9 +19,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import redis.client.jedis.CustomShardedJedisPool;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.exceptions.JedisException;
-import cache.service.redis.RedisService;
+import cache.service.RedisService;
 
 /**
  * "数据分片的Jedis连接池"服务实现，继承自{@link RedisService}。

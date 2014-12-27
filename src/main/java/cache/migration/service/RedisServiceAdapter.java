@@ -12,8 +12,8 @@ import java.util.concurrent.Future;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import cache.service.memcached.MemcachedService;
-import cache.service.redis.RedisService;
+import cache.service.MemcachedService;
+import cache.service.RedisService;
 
 /**
  * Redis服务适配器，适配{@link MemcachedService}接口，用于迁移Memcached到Redis。

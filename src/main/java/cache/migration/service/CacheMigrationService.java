@@ -7,7 +7,7 @@
  */
 package cache.migration.service;
 
-import cache.service.memcached.MemcachedService;
+import cache.service.MemcachedService;
 
 /**
  * 缓存迁移服务，继承自{@link MemcachedService}。

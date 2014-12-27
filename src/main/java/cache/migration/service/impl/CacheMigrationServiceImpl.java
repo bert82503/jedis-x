@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import cache.migration.service.CacheMigrationService;
 import cache.migration.service.RedisServiceAdapter;
-import cache.service.memcached.MemcachedService;
+import cache.service.MemcachedService;
 
 /**
  * "缓存迁移服务"实现，继承自{@link CacheMigrationService}。
