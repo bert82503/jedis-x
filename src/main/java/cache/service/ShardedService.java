@@ -5,12 +5,12 @@
  * use it only in accordance with the terms of the license agreement you entered
  * into with FraudMetrix.cn.
  */
-package redis.service;
+package cache.service;
 
 import java.io.Closeable;
 
 /**
- * Redis数据分片服务定义，增加开关功能和资源关闭功能。
+ * 数据分片服务定义，增加开关功能和资源关闭功能。
  * <p>
  * 服务继承{@link Closeable}接口，以便使用JDK 7的 <a
  * href="http://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html">try-with-resources</a>
@@ -18,7 +18,7 @@ import java.io.Closeable;
  * 
  * @author huagang.li 2014年12月19日 上午10:42:30
  */
-public interface RedisShardedService extends Closeable {
+public interface ShardedService extends Closeable {
 
     /**
      * 设置是否启用Redis服务。

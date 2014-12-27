@@ -17,9 +17,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import cache.service.redis.RedisService;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.exceptions.JedisException;
-import redis.service.RedisService;
 
 /**
  * "数据分片的Jedis连接池"服务实现类，继承自{@link RedisService}。

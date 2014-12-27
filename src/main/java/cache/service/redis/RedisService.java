@@ -5,14 +5,16 @@
  * use it only in accordance with the terms of the license agreement you entered
  * into with FraudMetrix.cn.
  */
-package redis.service;
+package cache.service.redis;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import cache.service.ShardedService;
+
 /**
- * Redis服务定义，增加开关功能和资源关闭功能。
+ * 封装<a href="http://redis.io">Redis</a>客户端，并增加开关功能和资源关闭功能。
  * <p>
  * 【XML配置示例】
  * 
@@ -34,7 +36,7 @@ import java.util.Set;
  * 
  * @author huagang.li 2014年12月12日 上午10:26:14
  */
-public interface RedisService extends RedisShardedService {
+public interface RedisService extends ShardedService {
 
     // =======================================================
     // Key (键) - http://redis.io/commands#generic
