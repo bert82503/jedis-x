@@ -1,0 +1,17 @@
+# Gradle
+/.gradle/
+
+# Maven
+/target/
+
+# TestNG
+/test-output/
+
+# IDEA
+.idea
+*.iml
+
+# Eclipse
+/.settings/
+.classpath
+.project
