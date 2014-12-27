@@ -12,8 +12,60 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jedis.version>2.6.1</jedis.version>
+    <spring-version>3.2.12.RELEASE</spring-version>
   </properties>
 
   <dependencies>
+		<!-- ======================================= -->
+    <!-- Apache Commons 框架 -->
+    <!-- ======================================= -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.3.2</version>
+    </dependency>
+    
+		<!-- ======================================= -->
+		<!-- 缓存（Redis）客户端 -->
+		<!-- ======================================= -->
+		<dependency>
+			<groupId>redis.clients</groupId>
+			<artifactId>jedis</artifactId>
+			<version>${jedis.version}</version>
+		</dependency>
+		
+		<!-- ======================================= -->
+    <!-- Spring 框架 -->
+    <!-- ======================================= -->
+		<dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-beans</artifactId>
+        <version>${spring-version}</version>
+      </dependency>
+		
+		<!-- ======================================= -->
+    <!-- 日志（Log）框架 -->
+    <!-- ======================================= -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.7.7</version>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.1.2</version>
+    </dependency>
+  
+    <!-- ======================================= -->
+    <!-- 测试（Test）框架 -->
+    <!-- ======================================= -->
+    <dependency>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+      <version>6.8.8</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
