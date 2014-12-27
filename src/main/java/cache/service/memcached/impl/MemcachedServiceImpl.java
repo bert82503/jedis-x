@@ -9,6 +9,8 @@ package cache.service.memcached.impl;
 
 import java.util.concurrent.Future;
 
+import javax.annotation.Resource;
+
 import net.spy.memcached.MemcachedClient;
 
 import org.apache.commons.lang3.StringUtils;
@@ -19,10 +21,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import cache.service.memcached.MemcachedService;
 
 /**
- * 实现Memcached服务。
+ * Memcached服务实现，继承自{@link MemcachedService}。
  * 
  * @author huagang.li 2014年12月27日 下午5:39:40
  */
+@Resource
 public class MemcachedServiceImpl implements MemcachedService {
 
     private final static Logger logger = LoggerFactory.getLogger(MemcachedServiceImpl.class);

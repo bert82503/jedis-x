@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+						http://www.springframework.org/schema/beans/spring-beans-3.2.xsd 
+						http://www.springframework.org/schema/context
+       					http://www.springframework.org/schema/context/spring-context-3.2.xsd
+						http://www.springframework.org/schema/tx
+           				http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+			            http://www.springframework.org/schema/aop 
+			            http://www.springframework.org/schema/aop/spring-aop-3.2.xsd"
+	default-autowire="byName">
+	
+	<!-- ================================== 引入配置文件 ====================================== -->
+	<context:property-placeholder
+		location="classpath:properties/biz.service.properties"
+		ignore-unresolvable="true" />
+	<context:annotation-config />
+
+	<!-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START memcached 配置 >>>>>>>>>>>>>>>>>>>>>>>>>>>> -->
+	<bean id="memcachedClient" class="net.spy.memcached.spring.MemcachedClientFactoryBean" lazy-init="true">
+		<property name="servers" value="${memcache.server.list}" />
+		<property name="transcoder">
+			<bean class="net.spy.memcached.transcoders.SerializingTranscoder">
+				<property name="compressionThreshold" value="${memcache.compress.threshold}" />
+			</bean>
+		</property>
+		<property name="opTimeout" value="${memcache.operation.timeout}" />
+		<property name="timeoutExceptionThreshold" value="${memcache.exception.timeout}" />
+
+		<property name="hashAlg" value="${memcache.hash.algorithm}" />
+		<property name="locatorType" value="${memcache.locator.type}" />
+		<property name="failureMode" value="${memcache.failure.mode}" />
+		<property name="useNagleAlgorithm" value="${memcache.use.nagle.algorithm}" />
+	</bean>
+
+	<bean id="memcachedService" class="cache.service.memcached.impl.MemcachedServiceImpl">
+		<property name="enabled" value="${memcache.enabled}" />
+	</bean>
+	<!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END memcached 配置 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+	
+	<!-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START Redis 配置 >>>>>>>>>>>>>>>>>>>>>>>>>>>> -->
+  <bean id="shardedJedisPool" class="redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean">
+    <property name="redisServers" value="${redis.server.list}" />
+    <property name="timeoutMillis" value="${redis.timeout.millis}" />
+    <property name="maxTotalNum" value="${redis.max.total.num}" />
+    <property name="maxIdleNum" value="${redis.max.idle.num}" />
+    <property name="minIdleNum" value="${redis.min.idle.num}" />
+    <property name="poolBehaviour" value="${redis.pool.behaviour}" />
+    <property name="timeBetweenEvictionRunsSeconds" value="${redis.time.between.eviction.runs.seconds}" />
+    <property name="numTestsPerEvictionRun" value="${redis.num.tests.per.eviction.run}" />
+    <property name="minEvictableIdleTimeMinutes" value="${redis.min.evictable.idle.time.minutes}" />
+    <property name="maxEvictableIdleTimeMinutes" value="${redis.max.evictable.idle.time.minutes}" />
+    <property name="removeAbandonedTimeoutMinutes" value="${redis.remove.abandoned.timeout.minutes}" />
+  </bean>
+
+  <bean id="redisService" class="redis.client.jedis.JedisServiceImpl" destroy-method="close">
+    <property name="enabled" value="${redis.enabled}" />
+  </bean>
+  <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END Redis 配置 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+  
+  <!-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START Memcached -> Redis 迁移配置 >>>>>>>>>>>>>>>>>>>>>>>>>>>> -->
+  <bean id="redisServiceAdapter" class="cache.migration.service.RedisServiceAdapter" />
+  
+  <bean id="cacheMigrationService" class="cache.migration.service.impl.CacheMigrationServiceImpl">
+     <property name="readRedisEnabled" value="${cache.migration.read.redis.enabled}" />
+  </bean>
+  <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END Memcached -> Redis 迁移配置 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
+
+</beans>

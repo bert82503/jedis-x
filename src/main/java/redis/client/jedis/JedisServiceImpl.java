@@ -12,20 +12,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.annotation.Resource;
+
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import cache.service.redis.RedisService;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.exceptions.JedisException;
+import cache.service.redis.RedisService;
 
 /**
- * "数据分片的Jedis连接池"服务实现类，继承自{@link RedisService}。
+ * "数据分片的Jedis连接池"服务实现，继承自{@link RedisService}。
  * 
  * @author huagang.li 2014年12月12日 下午4:59:38
  */
+@Resource
 public class JedisServiceImpl implements RedisService {
 
     private static final Logger    logger = LoggerFactory.getLogger(JedisServiceImpl.class);

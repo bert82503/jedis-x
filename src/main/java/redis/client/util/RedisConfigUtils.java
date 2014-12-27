@@ -29,7 +29,7 @@ public class RedisConfigUtils {
 
     private static final Logger logger       = LoggerFactory.getLogger(RedisConfigUtils.class);
 
-    private static final String REDIS_CONFIG = "properties" + File.separator + "service.properties";
+    private static final String REDIS_CONFIG = "properties" + File.separator + "biz.service.properties";
 
     private static Properties   configs;
 
