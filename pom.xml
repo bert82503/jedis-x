@@ -17,7 +17,7 @@
   </properties>
 
   <dependencies>
-		<!-- ======================================= -->
+    <!-- ======================================= -->
     <!-- Apache Commons 框架 -->
     <!-- ======================================= -->
     <dependency>
@@ -26,25 +26,25 @@
       <version>3.3.2</version>
     </dependency>
     
-		<!-- ======================================= -->
-		<!-- 缓存（Redis）客户端 -->
-		<!-- ======================================= -->
-		<dependency>
-			<groupId>redis.clients</groupId>
-			<artifactId>jedis</artifactId>
-			<version>${jedis.version}</version>
-		</dependency>
+    <!-- ======================================= -->
+    <!-- 缓存（Redis）客户端 -->
+    <!-- ======================================= -->
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>${jedis.version}</version>
+    </dependency>
 		
-		<!-- ======================================= -->
+    <!-- ======================================= -->
     <!-- Spring 框架 -->
     <!-- ======================================= -->
-		<dependency>
-        <groupId>org.springframework</groupId>
-        <artifactId>spring-beans</artifactId>
-        <version>${spring-version}</version>
-      </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-beans</artifactId>
+      <version>${spring-version}</version>
+    </dependency>
 		
-		<!-- ======================================= -->
+    <!-- ======================================= -->
     <!-- 日志（Log）框架 -->
     <!-- ======================================= -->
     <dependency>
