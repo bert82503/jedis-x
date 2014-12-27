@@ -127,7 +127,7 @@ public class CustomShardedJedisPool extends Pool<ShardedJedis> {
     }
 
     /**
-     * 设置用于接收"可被对象池吞掉的不可避免的异常"通知的监视器。
+     * 设置用于接收"可被对象池吞掉的不可避免的异常"的监视器。
      * 
      * @param swallowedExceptionListener
      */

@@ -28,7 +28,7 @@ import redis.clients.jedis.exceptions.JedisConnectionException;
 import redis.clients.util.Hashing;
 
 /**
- * {@link PooledObjectFactory<ShardedJedis>}自定义实现类。
+ * "数据分片的Jedis连接池对象工厂"自定义实现，继承自{@link PooledObjectFactory<ShardedJedis>}。
  * 
  * @author huagang.li 2014年12月8日 下午6:58:03
  */
@@ -150,7 +150,7 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
                         }
                     }
                 } catch (JedisConnectionException e) {
-                    // 探测异常的节点，抛异常是正常行为，忽略之
+                    // 探测异常的节点，抛出异常是正常行为，忽略之
                 }
             }
             if (brokenToActiveCounter.get() > 0) {
