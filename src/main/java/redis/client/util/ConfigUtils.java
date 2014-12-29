@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 
+import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean.PoolBehaviour;
 import redis.clients.jedis.JedisShardInfo;
 
 /**
@@ -25,21 +26,34 @@ import redis.clients.jedis.JedisShardInfo;
  * 
  * @author huagang.li 2014年12月13日 下午2:25:52
  */
-public class RedisConfigUtils {
+public class ConfigUtils {
 
-    private static final Logger logger       = LoggerFactory.getLogger(RedisConfigUtils.class);
+    private static final Logger logger             = LoggerFactory.getLogger(ConfigUtils.class);
 
-    private static final String REDIS_CONFIG = "properties" + File.separator + "biz.service.properties";
+    private static final String BIZ_SERVICE_CONFIG = "properties" + File.separator + "biz.service.properties";
 
-    private static Properties   configs;
+    private static Properties   configList;
 
     static {
+        configList = loadPropertyFile(BIZ_SERVICE_CONFIG);
+    }
+
+    /**
+     * 加载属性配置文件。
+     * 
+     * @param fileName 属性配置文件名
+     * @return
+     * @throws IOException
+     */
+    public static Properties loadPropertyFile(String fileName) {
+        Properties configs = new Properties();
         try {
-            configs = RedisConfigUtils.loadPropertyFile(REDIS_CONFIG);
-        } catch (IOException e) {
-            logger.error("Not found Redis config file: {}", REDIS_CONFIG);
-            configs = new Properties();
+            configs.load(ConfigUtils.class.getClassLoader().getResourceAsStream(fileName));
+        } catch (IOException ioe) {
+            String errMsg = String.format("File '%s' does not exist", BIZ_SERVICE_CONFIG);
+            logger.error(errMsg, ioe);
         }
+        return configs;
     }
 
     /**
@@ -48,7 +62,60 @@ public class RedisConfigUtils {
      * @return
      */
     public static String getRedisServers() {
-        return configs.getProperty("redis.server.list");
+        String redisServers = configList.getProperty("redis.server.list");
+        Assert.notNull(redisServers, "'redis.server.list' is not configured in '" + BIZ_SERVICE_CONFIG + "' file");
+        return redisServers;
+    }
+
+    public static int getTimeoutMillis() {
+        String sTimeoutMillis = configList.getProperty("redis.timeout.millis", "100");
+        return Integer.parseInt(sTimeoutMillis);
+    }
+
+    public static int getMaxTotalNum() {
+        String sTimeoutMillis = configList.getProperty("redis.max.total.num", "8");
+        return Integer.parseInt(sTimeoutMillis);
+    }
+
+    public static int getMaxIdleNum() {
+        String sTimeoutMillis = configList.getProperty("redis.max.idle.num", "8");
+        return Integer.parseInt(sTimeoutMillis);
+    }
+
+    public static int getMinIdleNum() {
+        String sTimeoutMillis = configList.getProperty("redis.min.idle.num", "0");
+        return Integer.parseInt(sTimeoutMillis);
+    }
+
+    public static PoolBehaviour getPoolBehaviour() {
+        String poolBehaviour = configList.getProperty("redis.pool.behaviour", "LIFO");
+        return PoolBehaviour.valueOf(poolBehaviour);
+    }
+
+    public static long getTimeBetweenEvictionRunsSeconds() {
+        String timeBetweenEvictionRunsSeconds = configList.getProperty("redis.time.between.eviction.runs.seconds",
+                                                                       "-1L");
+        return Long.parseLong(timeBetweenEvictionRunsSeconds);
+    }
+
+    public static int getNumTestsPerEvictionRun() {
+        String numTestsPerEvictionRun = configList.getProperty("redis.num.tests.per.eviction.run", "3");
+        return Integer.parseInt(numTestsPerEvictionRun);
+    }
+
+    public static long getMinEvictableIdleTimeMinutes() {
+        String minEvictableIdleTimeMinutes = configList.getProperty("redis.min.evictable.idle.time.minutes", "30L");
+        return Long.parseLong(minEvictableIdleTimeMinutes);
+    }
+
+    public static long getMaxEvictableIdleTimeMinutes() {
+        String maxEvictableIdleTimeMinutes = configList.getProperty("redis.max.evictable.idle.time.minutes", "30L");
+        return Long.parseLong(maxEvictableIdleTimeMinutes);
+    }
+
+    public static int getRemoveAbandonedTimeoutMinutes() {
+        String removeAbandonedTimeoutMinutes = configList.getProperty("redis.remove.abandoned.timeout.minutes", "5");
+        return Integer.parseInt(removeAbandonedTimeoutMinutes);
     }
 
     /**
@@ -57,7 +124,10 @@ public class RedisConfigUtils {
      * @return
      */
     public static String getMemcachedServers() {
-        return configs.getProperty("memcache.server.list");
+        String memcachedServers = configList.getProperty("memcache.server.list");
+        Assert.notNull(memcachedServers, "'memcache.server.list' is not configured in '" + BIZ_SERVICE_CONFIG
+                                         + "' file");
+        return memcachedServers;
     }
 
     /** 服务器信息的分隔符 */
@@ -111,19 +181,6 @@ public class RedisConfigUtils {
             }
         }
         return shards;
-    }
-
-    /**
-     * 加载属性配置文件。
-     * 
-     * @param fileName 属性配置文件名
-     * @return
-     * @throws IOException
-     */
-    public static Properties loadPropertyFile(String fileName) throws IOException {
-        Properties configs = new Properties();
-        configs.load(RedisConfigUtils.class.getClassLoader().getResourceAsStream(fileName));
-        return configs;
     }
 
 }

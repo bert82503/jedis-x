@@ -20,7 +20,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import redis.client.util.RedisConfigUtils;
+import redis.client.util.ConfigUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
@@ -34,22 +34,20 @@ import redis.clients.jedis.exceptions.JedisException;
  */
 public class CustomShardedJedisPoolTest {
 
-    private static final Logger    logger          = LoggerFactory.getLogger(CustomShardedJedisPoolTest.class);
-
-    private static final int       DEFAULT_TIMEOUT = (int) TimeUnit.MILLISECONDS.toMillis(100L);
+    private static final Logger    logger = LoggerFactory.getLogger(CustomShardedJedisPoolTest.class);
 
     private CustomShardedJedisPool pool;
 
     @BeforeClass
     public void init() throws InterruptedException {
-        List<JedisShardInfo> shards = RedisConfigUtils.parserRedisServerList(RedisConfigUtils.getRedisServers(),
-                                                                             DEFAULT_TIMEOUT);
+        List<JedisShardInfo> shards = ConfigUtils.parserRedisServerList(ConfigUtils.getRedisServers(),
+                                                                        ConfigUtils.getTimeoutMillis());
 
         GenericObjectPoolConfig poolConfig = new JedisPoolConfig();
         // 高并发压测
-        poolConfig.setMaxTotal(32768);
-        poolConfig.setMaxIdle(32768);
-        // poolConfig.setMinIdle(30);
+        poolConfig.setMaxTotal(ConfigUtils.getMaxTotalNum());
+        poolConfig.setMaxIdle(ConfigUtils.getMaxIdleNum());
+        // poolConfig.setMinIdle(ConfigUtils.getMinIdleNum());
         poolConfig.setMinIdle(3); // local test
         // 非阻塞
         poolConfig.setBlockWhenExhausted(false);
@@ -66,24 +64,24 @@ public class CustomShardedJedisPoolTest {
          */
         poolConfig.setTestWhileIdle(true);
         // 每隔5秒钟执行一次，保证异常节点被及时探测到（具体隔多久调度一次，根据业务需求来定）
-        // poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(3L));
-        poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(7L)); // local test
+        // poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(ConfigUtils.getTimeBetweenEvictionRunsSeconds()));
+        poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(2L)); // local test
         // 模拟关闭后台EvictionTimer守护线程
         // poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(500L)); // local test
         // 每次检测10个空闲对象
-        poolConfig.setNumTestsPerEvictionRun(10);
+        poolConfig.setNumTestsPerEvictionRun(3);
         // 当池对象的空闲时间超过该值时，就被纳入到驱逐检测范围
-        poolConfig.setSoftMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(5L));
+        poolConfig.setSoftMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(ConfigUtils.getMinEvictableIdleTimeMinutes()));
         // 池的最小驱逐空闲时间(空闲驱逐时间)
         // 当池对象的空闲时间超过该值时，立马被驱逐
-        poolConfig.setMinEvictableIdleTimeMillis(TimeUnit.DAYS.toMillis(1L));
+        poolConfig.setMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(ConfigUtils.getMaxEvictableIdleTimeMinutes()));
 
         this.pool = new CustomShardedJedisPool(poolConfig, shards);
 
         // 池对象废弃策略
         AbandonedConfig abandonedConfig = new AbandonedConfig();
         abandonedConfig.setRemoveAbandonedOnMaintenance(true);
-        abandonedConfig.setRemoveAbandonedTimeout((int) TimeUnit.MINUTES.toSeconds(5L));
+        abandonedConfig.setRemoveAbandonedTimeout((int) TimeUnit.MINUTES.toSeconds(ConfigUtils.getRemoveAbandonedTimeoutMinutes()));
         // abandonedConfig.setRemoveAbandonedTimeout((int) TimeUnit.SECONDS.toSeconds(20L)); // local test
         abandonedConfig.setLogAbandoned(true);
         abandonedConfig.setRemoveAbandonedOnBorrow(false);
@@ -136,7 +134,7 @@ public class CustomShardedJedisPoolTest {
 
             logger.info("Complete time: {}", Integer.valueOf(i));
             if (i < size) {
-                TimeUnit.SECONDS.sleep(2L);
+                TimeUnit.SECONDS.sleep(3L);
             }
         }
     }
@@ -152,7 +150,7 @@ public class CustomShardedJedisPoolTest {
         JedisShardInfo shardInfo = null;
         String key = null;
 
-        int size = 5;
+        int size = 4;
         for (int i = 1; i <= size; i++) {
             key = "st_" + i;
 
@@ -171,7 +169,7 @@ public class CustomShardedJedisPoolTest {
 
                 // 关闭处理节点的服务端连接，模拟Redis服务器出现异常(宕机)的场景，便于驱逐者定时器自动摘除异常(宕机)的Redis服务器
                 // 但只要请求一次命令又会重新连接上，模拟异常Redis服务器恢复正常的场景，便于驱逐者定时器自动添加恢复正常的Redis服务器
-                if (2 == i) {
+                if (1 == i) {
                     clientKill(jedis.getShard(key));
                 }
             } catch (JedisException je) {

@@ -9,8 +9,6 @@ package redis.client.jedis.spring;
 
 import static org.testng.Assert.assertEquals;
 
-import java.util.concurrent.TimeUnit;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
@@ -18,8 +16,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import redis.client.jedis.CustomShardedJedisPool;
-import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean.PoolBehaviour;
-import redis.client.util.RedisConfigUtils;
+import redis.client.util.ConfigUtils;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.exceptions.JedisException;
@@ -38,17 +35,17 @@ public class CustomShardedJedisPoolFactoryBeanTest {
     @BeforeClass
     public void init() throws Exception {
         CustomShardedJedisPoolFactoryBean shardedJedisPoolFactory = new CustomShardedJedisPoolFactoryBean();
-        shardedJedisPoolFactory.setRedisServers(RedisConfigUtils.getRedisServers());
-        shardedJedisPoolFactory.setTimeoutMillis(100);
-        shardedJedisPoolFactory.setMaxTotalNum(32768);
-        shardedJedisPoolFactory.setMaxIdleNum(32768);
-        shardedJedisPoolFactory.setMinIdleNum(3);
-        shardedJedisPoolFactory.setPoolBehaviour(PoolBehaviour.LIFO);
-        shardedJedisPoolFactory.setTimeBetweenEvictionRunsSeconds(60);
-        shardedJedisPoolFactory.setNumTestsPerEvictionRun(10);
-        shardedJedisPoolFactory.setMinEvictableIdleTimeMinutes(30L);
-        shardedJedisPoolFactory.setMaxEvictableIdleTimeMinutes(TimeUnit.DAYS.toMinutes(1L));
-        shardedJedisPoolFactory.setRemoveAbandonedTimeoutMinutes(5);
+        shardedJedisPoolFactory.setRedisServers(ConfigUtils.getRedisServers());
+        shardedJedisPoolFactory.setTimeoutMillis(ConfigUtils.getTimeoutMillis());
+        shardedJedisPoolFactory.setMaxTotalNum(ConfigUtils.getMaxTotalNum());
+        shardedJedisPoolFactory.setMaxIdleNum(ConfigUtils.getMaxIdleNum());
+        shardedJedisPoolFactory.setMinIdleNum(ConfigUtils.getMinIdleNum());
+        shardedJedisPoolFactory.setPoolBehaviour(ConfigUtils.getPoolBehaviour());
+        shardedJedisPoolFactory.setTimeBetweenEvictionRunsSeconds(ConfigUtils.getTimeBetweenEvictionRunsSeconds());
+        shardedJedisPoolFactory.setNumTestsPerEvictionRun(ConfigUtils.getNumTestsPerEvictionRun());
+        shardedJedisPoolFactory.setMinEvictableIdleTimeMinutes(ConfigUtils.getMinEvictableIdleTimeMinutes());
+        shardedJedisPoolFactory.setMaxEvictableIdleTimeMinutes(ConfigUtils.getMaxEvictableIdleTimeMinutes());
+        shardedJedisPoolFactory.setRemoveAbandonedTimeoutMinutes(ConfigUtils.getRemoveAbandonedTimeoutMinutes());
 
         pool = shardedJedisPoolFactory.getObject();
     }
@@ -63,7 +60,7 @@ public class CustomShardedJedisPoolFactoryBeanTest {
         JedisShardInfo shardInfo = null;
         String key = null;
 
-        int size = 3;
+        int size = 7;
         for (int i = 1; i <= size; i++) {
             key = "foo_" + i;
 

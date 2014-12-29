@@ -18,7 +18,7 @@ import org.springframework.beans.factory.FactoryBean;
 import org.springframework.util.Assert;
 
 import redis.client.jedis.CustomShardedJedisPool;
-import redis.client.util.RedisConfigUtils;
+import redis.client.util.ConfigUtils;
 import redis.clients.jedis.JedisPoolConfig;
 
 /**
@@ -104,7 +104,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
         this.setImmutablePoolConfig();
         CustomShardedJedisPool shardedJedisPool = new CustomShardedJedisPool(
                                                                              poolConfig,
-                                                                             RedisConfigUtils.parserRedisServerList(redisServers,
+                                                                             ConfigUtils.parserRedisServerList(redisServers,
                                                                                                                     timeoutMillis));
         shardedJedisPool.setAbandonedConfig(abandonedConfig);
         return shardedJedisPool;
@@ -118,7 +118,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      */
     private void setImmutablePoolConfig() throws IOException {
         // 通过Redis的默认配置文件来设置以下这些不变属性
-        Properties defaultRedisConfigs = RedisConfigUtils.loadPropertyFile(DEFAULT_REDIS_CONFIG);
+        Properties defaultRedisConfigs = ConfigUtils.loadPropertyFile(DEFAULT_REDIS_CONFIG);
 
         // 设置"在连接池耗尽时，借用池对象的方法(ObjectPool#borrowObject())调用"是非阻塞的
         boolean blockWhenExhausted = parseBooleanValue(defaultRedisConfigs, "redis.block.when.exhausted");

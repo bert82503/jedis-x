@@ -13,15 +13,26 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 /**
- * Test for {@link RedisConfigUtils}.
+ * Test for {@link ConfigUtils}.
  * 
  * @author huagang.li 2014年12月13日 下午3:23:26
  */
-public class RedisConfigUtilsTest {
+public class ConfigUtilsTest {
+
+    @Test
+    public void getRedisServers() {
+        assertEquals(ConfigUtils.getRedisServers(),
+                     "127.0.0.1:6379:Shard-01,127.0.0.1:6380:Shard-02,127.0.0.1:6381:Shard-03");
+    }
+
+    @Test
+    public void getMemcachedServers() {
+        assertEquals(ConfigUtils.getMemcachedServers(), "127.0.0.1:11211");
+    }
 
     @Test(dataProvider = "parserRedisServerList")
     public void parserRedisServerList(String redisServers, int timeoutMillis, String serverInfoStr) {
-        assertEquals(RedisConfigUtils.parserRedisServerList(redisServers, timeoutMillis).toString(), serverInfoStr);
+        assertEquals(ConfigUtils.parserRedisServerList(redisServers, timeoutMillis).toString(), serverInfoStr);
     }
 
     @DataProvider(name = "parserRedisServerList")
@@ -46,7 +57,7 @@ public class RedisConfigUtilsTest {
 
     @Test(dataProvider = "parserRedisServerListExp", expectedExceptions = { IllegalArgumentException.class })
     public void parserRedisServerListExp(String redisServers, int timeoutMillis) {
-        RedisConfigUtils.parserRedisServerList(redisServers, timeoutMillis);
+        ConfigUtils.parserRedisServerList(redisServers, timeoutMillis);
     }
 
     @DataProvider(name = "parserRedisServerListExp")
