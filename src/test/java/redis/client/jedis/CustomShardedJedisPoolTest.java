@@ -152,7 +152,7 @@ public class CustomShardedJedisPoolTest {
 
         int size = 4;
         for (int i = 1; i <= size; i++) {
-            key = "st_" + i;
+            key = "auto_detect_broken_redis_server_" + i;
 
             try {
                 // 获取一条Redis连接

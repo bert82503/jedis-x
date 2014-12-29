@@ -126,7 +126,7 @@ public class JedisServiceImpl implements RedisService {
                 } catch (JedisException e) {
                     logger.error(e.getMessage(), e);
                 }
-            } // 当seconds参数不合法(<= 0)时，后端会返回一个错误，即操作失败
+            } // 当seconds参数不合法(<= 0)时，后端会返回一个错误 ("JedisDataException: ERR invalid expire time in setex")，即操作失败
         }
         return null;
     }

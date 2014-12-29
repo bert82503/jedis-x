@@ -20,8 +20,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import redis.client.jedis.CustomShardedJedisPool;
-import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean;
+import redis.client.util.CacheUtils;
 import redis.client.util.ConfigUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -42,23 +41,10 @@ public class RedisServiceTest {
 
     @BeforeClass
     public void init() throws Exception {
-        CustomShardedJedisPoolFactoryBean shardedJedisPoolFactory = new CustomShardedJedisPoolFactoryBean();
-        shardedJedisPoolFactory.setRedisServers(ConfigUtils.getRedisServers());
-        shardedJedisPoolFactory.setTimeoutMillis(ConfigUtils.getTimeoutMillis());
-        shardedJedisPoolFactory.setMaxTotalNum(ConfigUtils.getMaxTotalNum());
-        shardedJedisPoolFactory.setMaxIdleNum(ConfigUtils.getMaxIdleNum());
-        shardedJedisPoolFactory.setMinIdleNum(ConfigUtils.getMinIdleNum());
-        shardedJedisPoolFactory.setPoolBehaviour(ConfigUtils.getPoolBehaviour());
-        shardedJedisPoolFactory.setTimeBetweenEvictionRunsSeconds(ConfigUtils.getTimeBetweenEvictionRunsSeconds());
-        shardedJedisPoolFactory.setNumTestsPerEvictionRun(ConfigUtils.getNumTestsPerEvictionRun());
-        shardedJedisPoolFactory.setMinEvictableIdleTimeMinutes(ConfigUtils.getMinEvictableIdleTimeMinutes());
-        shardedJedisPoolFactory.setMaxEvictableIdleTimeMinutes(ConfigUtils.getMaxEvictableIdleTimeMinutes());
-        shardedJedisPoolFactory.setRemoveAbandonedTimeoutMinutes(ConfigUtils.getRemoveAbandonedTimeoutMinutes());
-
         JedisServiceImpl jedisServiceImpl = new JedisServiceImpl();
-        CustomShardedJedisPool shardedJedisPool = shardedJedisPoolFactory.getObject();
-        jedisServiceImpl.setShardedJedisPool(shardedJedisPool);
+        jedisServiceImpl.setShardedJedisPool(CacheUtils.getShardedJedisPool());
         jedisServiceImpl.setEnabled(true);
+
         redisService = jedisServiceImpl;
     }
 
@@ -73,43 +59,85 @@ public class RedisServiceTest {
                                                 shardInfo.getTimeout())) {
                 // Jedis implements Closeable. Hence, the jedis instance will be auto-closed after the last statement.
                 try (Jedis jedis = pool.getResource()) {
-                    String ret = jedis.set("foo", "bar");
-                    assertEquals(ret, "OK");
-                    String value = jedis.get("foo");
-                    assertEquals(value, "bar");
+                    assertEquals(jedis.ping(), "PONG");
                 }
             }
         }
     }
 
-    private static final String RET_OK = "OK";
-
     @Test(description = "验证 String 的 SET、GET、DEL 命令")
     public void setAndGetAndDel() {
-        String ret = redisService.set("foo", "bar");
-        assertEquals(ret, RET_OK);
-
-        String value = redisService.get("foo");
-        assertEquals(value, "bar");
-
-        long removedKeyNum = redisService.del("foo");
-        assertEquals(removedKeyNum, 1L);
-
-        value = redisService.get("foo");
-        assertEquals(value, null);
+        set("foo", "bar"); // key 永不过期
+        del("foo", 1L);
+        // 数据已被删除，连续第二次delete时，删除操作会失败！
+        del("foo", 0L);
     }
+
+    private static final String RET_OK = "OK";
+
+    /**
+     * 更新(set)缓存数据。
+     */
+    private void set(String key, String value) {
+        // SET
+        String ret = redisService.set(key, value);
+        assertEquals(ret, RET_OK);
+        // GET
+        String val = redisService.get(key);
+        assertEquals(val, value);
+    }
+
+    /**
+     * 删除(delete)缓存数据。
+     */
+    private void del(String key, long removedKeyNum) {
+        // DEL
+        long rkn = redisService.del(key);
+        assertEquals(rkn, removedKeyNum);
+        // GET
+        String val = redisService.get(key);
+        assertEquals(val, null);
+    }
+
+    /** 7天 */
+    private static final int TIME_7_DAY  = (int) TimeUnit.DAYS.toSeconds(7L);
+    /** 30天 */
+    private static final int TIME_30_DAY = (int) TimeUnit.DAYS.toSeconds(30L);
 
     @Test(description = "验证 String 的 SETEX 命令")
     public void setex() {
-        String ret = redisService.setex("str:1", 1, "1");
-        assertEquals(ret, RET_OK);
+        setex("str:7day", TIME_7_DAY, "7 day"); // 相对当前时间，过期时间为7天
+        del("str:7day", 1L);
 
-        // 当seconds参数不合法时，返回 null (后台抛出"JedisDataException: ERR invalid expire time in setex")
-        ret = redisService.setex("str:0", 0, "0");
-        assertEquals(ret, null);
+        // Redis的过期时间没有最大30天限制，可以是任何的正整数，与Memcached不同！
+        setex("str:30day.1s", TIME_30_DAY + 1, "30 day + 1s");
+        del("str:30day.1s", 1L);
 
-        ret = redisService.setex("str:-1", -1, "-1");
-        assertEquals(ret, null);
+        setex("str:1", 1, "1"); // 1秒钟后自动过期
+
+        // 当seconds参数不合法(<= 0)时，返回 null
+        setex("str:0", 0, "0");
+        setex("str:-1", -1, "-1");
+    }
+
+    /**
+     * 更新(set)缓存数据及其过期时间。
+     */
+    private void setex(String key, int seconds, String value) {
+        // SETEX
+        String ret = redisService.setex(key, seconds, value);
+        if (seconds > 0) {
+            assertEquals(ret, RET_OK);
+        } else {
+            assertEquals(ret, null); // 更新失败
+        }
+        // GET
+        String val = redisService.get(key);
+        if (seconds > 0) {
+            assertEquals(val, value);
+        } else {
+            assertEquals(val, null);
+        }
     }
 
     @Test(description = "验证 List 的 LPUSH、LRANGE、LTRIM、LLEN、RPOP 命令")
@@ -163,7 +191,7 @@ public class RedisServiceTest {
         redisService.rpop("list");
     }
 
-    @Test(enabled = true, description = "List(列表) 相关操作的性能测试")
+    @Test(enabled = false, description = "List(列表) 相关操作的性能测试")
     public void listBenchmark() {
         for (int j = 1; j <= 7; j++) {
             String key = "list:global.smartId.smartdev123";
@@ -249,7 +277,7 @@ public class RedisServiceTest {
                                                        + "\"eventId\":\"trade\",\"eventType\":\"Trade\",\"ext_IMEI\":\"99000522667636\",\"ipAddress\":\"115.210.9.165\",\"location\":\"金华市\","
                                                        + "\"payeeUserid\":\"hpayZZT@w13758984588\",\"tradingAmount\":21400}";
 
-    @Test(enabled = true, description = "Sorted Set(有序集合) 相关操作的性能测试")
+    @Test(enabled = false, description = "Sorted Set(有序集合) 相关操作的性能测试")
     public void sortedSetBenchmark() {
         for (int j = 1; j <= 7; j++) {
             String key = "zset:global.smartId.smartdev123";
@@ -307,7 +335,9 @@ public class RedisServiceTest {
 
     @AfterClass
     public void destroy() {
-        redisService.close();
+        if (redisService != null) {
+            redisService.close();
+        }
     }
 
 }

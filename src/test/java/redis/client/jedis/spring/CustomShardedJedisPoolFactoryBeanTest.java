@@ -16,7 +16,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import redis.client.jedis.CustomShardedJedisPool;
-import redis.client.util.ConfigUtils;
+import redis.client.util.CacheUtils;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.exceptions.JedisException;
@@ -34,20 +34,7 @@ public class CustomShardedJedisPoolFactoryBeanTest {
 
     @BeforeClass
     public void init() throws Exception {
-        CustomShardedJedisPoolFactoryBean shardedJedisPoolFactory = new CustomShardedJedisPoolFactoryBean();
-        shardedJedisPoolFactory.setRedisServers(ConfigUtils.getRedisServers());
-        shardedJedisPoolFactory.setTimeoutMillis(ConfigUtils.getTimeoutMillis());
-        shardedJedisPoolFactory.setMaxTotalNum(ConfigUtils.getMaxTotalNum());
-        shardedJedisPoolFactory.setMaxIdleNum(ConfigUtils.getMaxIdleNum());
-        shardedJedisPoolFactory.setMinIdleNum(ConfigUtils.getMinIdleNum());
-        shardedJedisPoolFactory.setPoolBehaviour(ConfigUtils.getPoolBehaviour());
-        shardedJedisPoolFactory.setTimeBetweenEvictionRunsSeconds(ConfigUtils.getTimeBetweenEvictionRunsSeconds());
-        shardedJedisPoolFactory.setNumTestsPerEvictionRun(ConfigUtils.getNumTestsPerEvictionRun());
-        shardedJedisPoolFactory.setMinEvictableIdleTimeMinutes(ConfigUtils.getMinEvictableIdleTimeMinutes());
-        shardedJedisPoolFactory.setMaxEvictableIdleTimeMinutes(ConfigUtils.getMaxEvictableIdleTimeMinutes());
-        shardedJedisPoolFactory.setRemoveAbandonedTimeoutMinutes(ConfigUtils.getRemoveAbandonedTimeoutMinutes());
-
-        pool = shardedJedisPoolFactory.getObject();
+        pool = CacheUtils.getShardedJedisPool();
     }
 
     private static final String DEFAUL_VALUE = "bar";
@@ -78,6 +65,8 @@ public class CustomShardedJedisPoolFactoryBeanTest {
                 assertEquals(statusCode, RET_OK);
                 String value = jedis.get(key);
                 assertEquals(value, DEFAUL_VALUE);
+                long removedElementNum = jedis.del(key);
+                assertEquals(removedElementNum, 1L);
 
                 // 返回Jedis集群池对象到连接池
                 jedis.close();

@@ -14,9 +14,7 @@
 	default-autowire="byName">
 	
 	<!-- ================================== 引入配置文件 ====================================== -->
-	<context:property-placeholder
-		location="classpath:properties/biz.service.properties"
-		ignore-unresolvable="true" />
+	<context:property-placeholder location="classpath:properties/biz.service.properties" ignore-unresolvable="true" />
 	<context:annotation-config />
 
 	<!-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START memcached 配置 >>>>>>>>>>>>>>>>>>>>>>>>>>>> -->

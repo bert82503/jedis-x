@@ -37,6 +37,11 @@ public class MemcachedServiceImpl implements MemcachedService {
     /** Memcached服务启用标识 */
     private boolean             enabled;
 
+    /**
+     * 用于单元测试(UT, Unit Test)。
+     * 
+     * @param memcachedClient
+     */
     public void setMemcachedClient(MemcachedClient memcachedClient) {
         this.memcachedClient = memcachedClient;
     }

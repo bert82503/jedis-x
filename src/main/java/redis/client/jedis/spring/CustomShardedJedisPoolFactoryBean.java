@@ -49,8 +49,8 @@ import redis.clients.jedis.JedisPoolConfig;
  * redis.timeout.millis=100
  * redis.max.total.num=32768
  * redis.max.idle.num=32768
- * redis.min.idle.num=20
- * redis.time.between.eviction.runs.seconds=60
+ * redis.min.idle.num=30
+ * redis.time.between.eviction.runs.seconds=1
  * redis.num.tests.per.eviction.run=10
  * redis.min.evictable.idle.time.minutes=5
  * redis.max.evictable.idle.time.minutes=1440
@@ -105,7 +105,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
         CustomShardedJedisPool shardedJedisPool = new CustomShardedJedisPool(
                                                                              poolConfig,
                                                                              ConfigUtils.parserRedisServerList(redisServers,
-                                                                                                                    timeoutMillis));
+                                                                                                               timeoutMillis));
         shardedJedisPool.setAbandonedConfig(abandonedConfig);
         return shardedJedisPool;
     }

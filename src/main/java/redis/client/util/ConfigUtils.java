@@ -13,6 +13,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+import net.spy.memcached.ConnectionFactoryBuilder.Locator;
+import net.spy.memcached.ConnectionFactoryBuilder.Protocol;
+import net.spy.memcached.FailureMode;
+import net.spy.memcached.HashAlgorithm;
+import net.spy.memcached.transcoders.SerializingTranscoder;
+import net.spy.memcached.transcoders.Transcoder;
+
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,6 +135,48 @@ public class ConfigUtils {
         Assert.notNull(memcachedServers, "'memcache.server.list' is not configured in '" + BIZ_SERVICE_CONFIG
                                          + "' file");
         return memcachedServers;
+    }
+
+    public static Protocol getProtocol() {
+        String protocol = configList.getProperty("memcache.protocol", "BINARY");
+        return Protocol.valueOf(protocol);
+    }
+
+    public static Transcoder<Object> getTranscoder() {
+        SerializingTranscoder transcoder = new SerializingTranscoder();
+        String compressionThreshold = configList.getProperty("memcache.compress.threshold", "1024");
+        transcoder.setCompressionThreshold(Integer.parseInt(compressionThreshold));
+        return transcoder;
+    }
+
+    public static long getOpTimeout() {
+        String opTimeout = configList.getProperty("memcache.operation.timeout", "500");
+        return Long.parseLong(opTimeout);
+    }
+
+    public static int getTimeoutExceptionThreshold() {
+        String timeoutExceptionThreshold = configList.getProperty("memcache.exception.timeout", "500");
+        return Integer.parseInt(timeoutExceptionThreshold);
+    }
+
+    public static HashAlgorithm getHashAlgorithm() {
+        String hashAlg = configList.getProperty("memcache.hash.algorithm", "KETAMA_HASH");
+        return HashAlgorithm.valueOf(hashAlg);
+    }
+
+    public static Locator getLocatorType() {
+        String locatorType = configList.getProperty("memcache.locator.type", "CONSISTENT");
+        return Locator.valueOf(locatorType);
+    }
+
+    public static FailureMode getFailureMode() {
+        String failureMode = configList.getProperty("memcache.failure.mode", "Redistribute");
+        return FailureMode.valueOf(failureMode);
+    }
+
+    public static boolean getUseNagleAlgorithm() {
+        String useNagleAlgorithm = configList.getProperty("memcache.use.nagle.algorithm", "false");
+        return Boolean.parseBoolean(useNagleAlgorithm);
     }
 
     /** 服务器信息的分隔符 */
