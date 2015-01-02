@@ -13,7 +13,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jedis.version>2.6.1</jedis.version>
-    <memcached.version>2.6</memcached.version>
+    <memcached.version>2.11.3</memcached.version>
     <spring-version>3.2.12.RELEASE</spring-version>
   </properties>
 
@@ -39,7 +39,7 @@
     <!-- Memcached 缓存客户端 -->
     <!-- ======================================= -->
     <dependency>
-      <groupId>spy</groupId>
+      <groupId>net.spy</groupId>
       <artifactId>spymemcached</artifactId>
       <version>${memcached.version}</version>
     </dependency>

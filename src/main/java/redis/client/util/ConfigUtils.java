@@ -15,6 +15,7 @@ import java.util.Properties;
 
 import net.spy.memcached.ConnectionFactoryBuilder.Locator;
 import net.spy.memcached.ConnectionFactoryBuilder.Protocol;
+import net.spy.memcached.DefaultHashAlgorithm;
 import net.spy.memcached.FailureMode;
 import net.spy.memcached.HashAlgorithm;
 import net.spy.memcached.transcoders.SerializingTranscoder;
@@ -161,7 +162,7 @@ public class ConfigUtils {
 
     public static HashAlgorithm getHashAlgorithm() {
         String hashAlg = configList.getProperty("memcache.hash.algorithm", "KETAMA_HASH");
-        return HashAlgorithm.valueOf(hashAlg);
+		return DefaultHashAlgorithm.valueOf(hashAlg);
     }
 
     public static Locator getLocatorType() {
