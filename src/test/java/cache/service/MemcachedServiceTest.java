@@ -3,7 +3,6 @@ package cache.service;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -45,13 +44,13 @@ public class MemcachedServiceTest {
     @Test(description = "验证 get、set、delete 命令")
     public void getAndSetAndDelete() throws InterruptedException, ExecutionException {
         // set
-        set("foo", 0, "bar"); // item 永不过期
+        this.set("foo", 0, "bar"); // item 永不过期
         // delete
-        delete("foo");
+        this.delete("foo");
 
-        set("foo", TIME_7_DAY, "bar"); // 相对当前时间，过期时间为7天
-        set("foo", TIME_30_DAY, "bar"); // 相对当前时间，过期时间为30天
-        delete("foo");
+        this.set("foo", TIME_7_DAY, "bar"); // 相对当前时间，过期时间为7天
+        this.set("foo", TIME_30_DAY, "bar"); // 相对当前时间，过期时间为30天
+        this.delete("foo");
 
         // 相对当前时间，过期时间为-1秒
         // 插入是成功的
@@ -59,12 +58,12 @@ public class MemcachedServiceTest {
         // 插入后，item 不过期，是有效的
         // 对于"文本协议"
         // 但插入后，item 就过期了，因为其过期时间是插入操作的前1秒钟
-        set("foo", -1, "bar");
+        this.set("foo", -1, "bar");
 
         // 过期时间被设置为大于30天，实际的过期时间是系统的绝对时间
         // 插入是成功的
         // 但插入后，item 就过期了，因为其过期时间是操作系统相对(January 1, 1970)的时间，系统取出的当前时间肯定比它大
-        set("foo", TIME_30_DAY + 1, "bar");
+        this.set("foo", TIME_30_DAY + 1, "bar");
     }
 
     /**
@@ -97,56 +96,89 @@ public class MemcachedServiceTest {
         assertEquals(val, null);
     }
 
-    private static final String ONLINE_EVENT_CONTENT = "{\"accountLogin\":\"181380\",\"create\":1414774385000,\"deliverAddressStreet\":\"浙江省|金华市|婺城区|宾虹路|865号\","
-                                                       + "\"eventId\":\"trade\",\"eventType\":\"Trade\",\"ext_IMEI\":\"99000522667636\",\"ipAddress\":\"115.210.9.165\",\"location\":\"金华市\","
-                                                       + "\"payeeUserid\":\"hpayZZT@w13758984588\",\"tradingAmount\":21400}";
+    /**
+     * 客户端使用二进制协议(Binary Protocol)存储数据时，照样可以在命令行模式下使用文本形式的键获取。
+     * 
+     * <pre>
+     * telnet localhost 11211
+     * 
+     * get protocol_binary
+     * VALUE protocol_binary 0 11
+     * Binary Data
+     * END
+     * </pre>
+     */
+    @Test(description = "验证二进制协议(Binary Protocol)的数据存储方式")
+    public void useBinaryProtocol() {
+        String key = "protocol_binary";
+        String val = "Binary Data";
+        memcachedService.set(key, TIME_7_DAY, val);
+        assertEquals(memcachedService.get(key), val);
+    }
 
-    @Test(enabled = false, description = "性能测试")
-    public void benchmark() {
-        for (int j = 1; j <= 7; j++) {
-            String key = "zset:global.smartId.smartdev123";
-
-            Random random = new Random(System.currentTimeMillis());
-            // 预热缓存数据
-            int sampleNum = 3000;
-            int capacity = (ONLINE_EVENT_CONTENT.length() + 20) * sampleNum;
-            StringBuilder buffer = new StringBuilder(capacity);
-            for (int i = 0; i < sampleNum; i++) {
-                String member = ONLINE_EVENT_CONTENT + random.nextLong();
-                buffer.append(member).append(';');
+    /**
+     * <pre>
+     * 启动Memcached服务
+     *      /usr/apps/memcached/bin/memcached -p 11211 -B auto -m 1 -n 48 -f 1.25 -c 1024 -C -vv
+     *      
+     *      slab class   1: chunk size        96 perslab   10922
+     *      slab class   2: chunk size       120 perslab    8738
+     *      slab class   3: chunk size       152 perslab    6898
+     *      slab class   4: chunk size       192 perslab    5461
+     * 查看 Item 分布
+     *      stats items
+     *      
+     *      STAT items:1:number 10922
+     *      STAT items:1:age 74
+     *      STAT items:1:evicted 19078
+     *      STAT items:1:evicted_nonzero 19078
+     *      STAT items:1:evicted_time 29
+     *      STAT items:1:outofmemory 0
+     *      STAT items:1:tailrepairs 0
+     *      STAT items:1:reclaimed 0
+     *      STAT items:1:expired_unfetched 0
+     *      STAT items:1:evicted_unfetched 1078
+     *      STAT items:1:crawler_reclaimed 0
+     *      STAT items:1:lrutail_reflocked 0
+     * 其中，number属性表示该"STAT items"可以保存的Item总量。
+     * </pre>
+     * 
+     * @throws InterruptedException
+     * @throws ExecutionException
+     */
+    @Test(enabled = false, description = "测试Memcached的LRU删除机制")
+    public void lruDelete() throws InterruptedException, ExecutionException {
+        String keyPrefix = "global.account.";
+        for (int i = 0, size = 1000; i < size; i++) {
+            Future<Boolean> ret = memcachedService.set(keyPrefix + i, TIME_7_DAY, "zhangsan");
+            if (!ret.get().booleanValue()) {
+                logger.warn("Set key failed: {}", keyPrefix + i);
             }
-            memcachedService.set(key, TIME_7_DAY, buffer.toString());
-
-            // 测试有序集合较长情况下，zadd 的性能
-            int totalTime = 0;
-            int size = 3;
-            for (int i = 0; i < size; i++) {
-                long startTime = System.currentTimeMillis();
-                String newValue = ONLINE_EVENT_CONTENT + random.nextLong();
-                String originalValue = memcachedService.getString(key);
-                memcachedService.set(key, TIME_7_DAY, originalValue + newValue + ';');
-                long runTime = System.currentTimeMillis() - startTime;
-                totalTime += runTime;
-                logger.info("Time of 'append': {}", runTime);
-            }
-            logger.info("Total time of 'append': {}", totalTime);
-
-            long startTime = System.currentTimeMillis();
-            String val = memcachedService.getString(key);
-            long runTime = System.currentTimeMillis() - startTime;
-            logger.info("Time of 'get': {}, size of value: {}, length of value: {}", runTime, sampleNum + size,
-                        val.length());
-
-            // 清空缓存数据
-            memcachedService.delete(key);
-
-            logger.info("Complete time: {}\n", Integer.valueOf(j));
         }
+
+        for (int i = 2000, size = 12000; i < size; i++) {
+            String key = keyPrefix + i;
+            Future<Boolean> ret = memcachedService.set(key, TIME_7_DAY, "zhangsan");
+            if (!ret.get().booleanValue()) {
+                logger.warn("Set key failed: {}", keyPrefix + i);
+            }
+            memcachedService.getString(key);
+            memcachedService.getString(key);
+        }
+
+        int unhitCounter = 0;
+        for (int i = 0, size = 1000; i < size; i++) {
+            String val = memcachedService.getString(keyPrefix + i);
+            if (val == null) {
+                unhitCounter += 1;
+            }
+        }
+        logger.debug("Number of un-hit key: {}", Integer.valueOf(unhitCounter));
     }
 
     @AfterClass
     public void destroy() {
-        if (memcachedService != null) {
+        if (null != memcachedService) {
             memcachedService.close();
         }
     }

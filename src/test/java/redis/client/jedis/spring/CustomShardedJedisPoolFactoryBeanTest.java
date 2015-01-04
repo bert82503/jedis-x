@@ -79,7 +79,9 @@ public class CustomShardedJedisPoolFactoryBeanTest {
 
     @AfterClass
     public void destroy() {
-        pool.close();
+        if (null != pool) {
+            pool.close();
+        }
     }
 
 }

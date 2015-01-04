@@ -19,24 +19,24 @@ import org.testng.annotations.Test;
  */
 public class ConfigUtilsTest {
 
-    @Test
+    @Test(description = "验证'获取Redis服务器列表'方法")
     public void getRedisServers() {
         assertEquals(ConfigUtils.getRedisServers(),
                      "127.0.0.1:6379:Shard-01,127.0.0.1:6380:Shard-02,127.0.0.1:6381:Shard-03");
     }
 
-    @Test
+    @Test(description = "验证'获取Memcached服务器列表'方法")
     public void getMemcachedServers() {
         assertEquals(ConfigUtils.getMemcachedServers(), "127.0.0.1:11211");
     }
 
-    @Test(dataProvider = "parserRedisServerList")
+    @Test(dataProvider = "parseRedisServerList", description = "验证'解析Redis服务器列表配置信息'方法")
     public void parserRedisServerList(String redisServers, int timeoutMillis, String serverInfoStr) {
-        assertEquals(ConfigUtils.parserRedisServerList(redisServers, timeoutMillis).toString(), serverInfoStr);
+        assertEquals(ConfigUtils.parseRedisServerList(redisServers, timeoutMillis).toString(), serverInfoStr);
     }
 
-    @DataProvider(name = "parserRedisServerList")
-    protected static final Object[][] parserRedisServerListTestData() {
+    @DataProvider(name = "parseRedisServerList")
+    protected static final Object[][] parseRedisServerListTestData() {
         Object[][] testData = new Object[][] {//
         // 未定义节点权重
                 { "192.168.6.189:6379:Shard-01, 192.168.6.189:6380:Shard-02, 192.168.6.189:6381:Shard-03", 100,
@@ -57,7 +57,7 @@ public class ConfigUtilsTest {
 
     @Test(dataProvider = "parserRedisServerListExp", expectedExceptions = { IllegalArgumentException.class })
     public void parserRedisServerListExp(String redisServers, int timeoutMillis) {
-        ConfigUtils.parserRedisServerList(redisServers, timeoutMillis);
+        ConfigUtils.parseRedisServerList(redisServers, timeoutMillis);
     }
 
     @DataProvider(name = "parserRedisServerListExp")

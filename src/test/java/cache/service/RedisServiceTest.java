@@ -10,7 +10,6 @@ package cache.service;
 import static org.testng.Assert.assertEquals;
 
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -52,7 +51,7 @@ public class RedisServiceTest {
 
     @Test(description = "检查每一台Redis服务器是否运行正常")
     public void checkEachRedisServerRunOk() {
-        List<JedisShardInfo> shards = ConfigUtils.parserRedisServerList(ConfigUtils.getRedisServers(), DEFAULT_TIMEOUT);
+        List<JedisShardInfo> shards = ConfigUtils.parseRedisServerList(ConfigUtils.getRedisServers(), DEFAULT_TIMEOUT);
         for (JedisShardInfo shardInfo : shards) {
             // try-with-resources, in Java SE 7 and later
             try (JedisPool pool = new JedisPool(new JedisPoolConfig(), shardInfo.getHost(), shardInfo.getPort(),
@@ -191,45 +190,6 @@ public class RedisServiceTest {
         redisService.rpop("list");
     }
 
-    @Test(enabled = false, description = "List(列表) 相关操作的性能测试")
-    public void listBenchmark() {
-        for (int j = 1; j <= 7; j++) {
-            String key = "list:global.smartId.smartdev123";
-
-            Random random = new Random(System.currentTimeMillis());
-            // 预热缓存数据
-            int sampleNum = 3000;
-            for (int i = 0; i < sampleNum; i++) {
-                String value = ONLINE_EVENT_CONTENT + random.nextLong();
-                redisService.lpush(key, value);
-            }
-
-            // 测试列表较长情况下，lpush 的性能
-            int totalTime = 0;
-            int size = 3;
-            for (int i = 0; i < size; i++) {
-                long startTime = System.currentTimeMillis();
-                String value = ONLINE_EVENT_CONTENT + random.nextLong();
-                redisService.lpush(key, value);
-                long runTime = System.currentTimeMillis() - startTime;
-                totalTime += runTime;
-                logger.info("Time of 'lpush': {}", runTime);
-            }
-            logger.info("Total time of 'lpush': {}", totalTime);
-
-            long startTime = System.currentTimeMillis();
-            List<String> list = redisService.lrange(key, 0, -1);
-            long runTime = System.currentTimeMillis() - startTime;
-            logger.info("Time of 'lrange': {}, size of List: {}", runTime, list.size());
-
-            // 清空缓存数据
-            redisService.ltrim(key, 0, 0);
-            redisService.rpop(key);
-
-            logger.info("Complete time: {}\n", Integer.valueOf(j));
-        }
-    }
-
     @Test(description = "验证 有序集合(Sorted Set) 的 ZADD、ZRANGEBYSCORE、ZREVRANGEBYSCORE、ZREMRANGEBYSCORE、ZCARD 命令")
     public void sortedSet() {
         // zadd
@@ -273,49 +233,6 @@ public class RedisServiceTest {
         redisService.zremrangeByScore("zset", Double.MIN_VALUE, Double.MAX_VALUE);
     }
 
-    private static final String ONLINE_EVENT_CONTENT = "{\"accountLogin\":\"181380\",\"create\":1414774385000,\"deliverAddressStreet\":\"浙江省|金华市|婺城区|宾虹路|865号\","
-                                                       + "\"eventId\":\"trade\",\"eventType\":\"Trade\",\"ext_IMEI\":\"99000522667636\",\"ipAddress\":\"115.210.9.165\",\"location\":\"金华市\","
-                                                       + "\"payeeUserid\":\"hpayZZT@w13758984588\",\"tradingAmount\":21400}";
-
-    @Test(enabled = false, description = "Sorted Set(有序集合) 相关操作的性能测试")
-    public void sortedSetBenchmark() {
-        for (int j = 1; j <= 7; j++) {
-            String key = "zset:global.smartId.smartdev123";
-
-            Random random = new Random(System.currentTimeMillis());
-            // 预热缓存数据
-            int sampleNum = 3000;
-            for (int i = 0; i < sampleNum; i++) {
-                String member = ONLINE_EVENT_CONTENT + random.nextLong();
-                redisService.zadd(key, System.currentTimeMillis(), member);
-            }
-
-            // 测试有序集合较长情况下，zadd 的性能
-            int totalTime = 0;
-            int size = 3;
-            for (int i = 0; i < size; i++) {
-                long startTime = System.currentTimeMillis();
-                String value = ONLINE_EVENT_CONTENT + random.nextLong();
-                long score = System.currentTimeMillis();
-                redisService.zadd(key, score, value);
-                long runTime = System.currentTimeMillis() - startTime;
-                totalTime += runTime;
-                logger.info("Time of 'zadd': {}", runTime);
-            }
-            logger.info("Total time of 'zadd': {}", totalTime);
-
-            long startTime = System.currentTimeMillis();
-            Set<String> zset = redisService.zrevrangeByScore(key, Double.MAX_VALUE, Double.MIN_VALUE);
-            long runTime = System.currentTimeMillis() - startTime;
-            logger.info("Time of 'zrevrangeByScore': {}, size of ZSet: {}", runTime, zset.size());
-
-            // 清空缓存数据
-            redisService.zremrangeByScore(key, Double.MIN_VALUE, Double.MAX_VALUE);
-
-            logger.info("Complete time: {}\n", Integer.valueOf(j));
-        }
-    }
-
     @Test(enabled = false, description = "验证\"自动摘除异常(宕机)的Redis服务器，自动添加恢复正常的Redis服务器\"功能")
     public void autoDetectBrokenRedisServer() throws InterruptedException {
         String key = null;
@@ -335,7 +252,7 @@ public class RedisServiceTest {
 
     @AfterClass
     public void destroy() {
-        if (redisService != null) {
+        if (null != redisService) {
             redisService.close();
         }
     }

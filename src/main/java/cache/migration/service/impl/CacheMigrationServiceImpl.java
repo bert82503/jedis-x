@@ -48,7 +48,7 @@ public class CacheMigrationServiceImpl implements CacheMigrationService {
 
     @Override
     public void setEnabled(boolean enabled) {
-        // 缓存迁移不用开关功能
+        // 缓存迁移不用开关功能，由底层服务自身来控制
     }
 
     @Override

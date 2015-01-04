@@ -40,7 +40,7 @@ public class CustomShardedJedisPoolTest {
 
     @BeforeClass
     public void init() throws InterruptedException {
-        List<JedisShardInfo> shards = ConfigUtils.parserRedisServerList(ConfigUtils.getRedisServers(),
+        List<JedisShardInfo> shards = ConfigUtils.parseRedisServerList(ConfigUtils.getRedisServers(),
                                                                         ConfigUtils.getTimeoutMillis());
 
         GenericObjectPoolConfig poolConfig = new JedisPoolConfig();
@@ -214,7 +214,7 @@ public class CustomShardedJedisPoolTest {
 
     @AfterClass
     public void destroy() {
-        if (pool != null) {
+        if (null != pool) {
             pool.close();
         }
     }

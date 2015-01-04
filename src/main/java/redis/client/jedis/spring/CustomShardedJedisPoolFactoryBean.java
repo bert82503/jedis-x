@@ -104,7 +104,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
         this.setImmutablePoolConfig();
         CustomShardedJedisPool shardedJedisPool = new CustomShardedJedisPool(
                                                                              poolConfig,
-                                                                             ConfigUtils.parserRedisServerList(redisServers,
+                                                                             ConfigUtils.parseRedisServerList(redisServers,
                                                                                                                timeoutMillis));
         shardedJedisPool.setAbandonedConfig(abandonedConfig);
         return shardedJedisPool;

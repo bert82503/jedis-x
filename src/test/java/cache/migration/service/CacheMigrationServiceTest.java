@@ -101,7 +101,7 @@ public class CacheMigrationServiceTest {
 
     @AfterClass
     public void destroy() {
-        if (cacheMigrationService != null) {
+        if (null != cacheMigrationService) {
             cacheMigrationService.close();
         }
     }

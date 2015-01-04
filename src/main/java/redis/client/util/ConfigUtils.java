@@ -198,7 +198,7 @@ public class ConfigUtils {
      * @param timeoutMillis 超时时间(ms)
      * @return
      */
-    public static List<JedisShardInfo> parserRedisServerList(String redisServers, int timeoutMillis) {
+    public static List<JedisShardInfo> parseRedisServerList(String redisServers, int timeoutMillis) {
         Assert.notNull(redisServers, "'redisServers' param must not be null");
 
         String[] shardInfoArray = redisServers.split(SERVER_INFO_SETPARATOR);
