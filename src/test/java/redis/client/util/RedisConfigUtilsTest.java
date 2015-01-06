@@ -13,26 +13,47 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 /**
- * Test for {@link ConfigUtils}.
+ * Test for {@link RedisConfigUtils}.
+ * <p>
+ * 通过单元测试来防止Redis的一些默认设置不被随意更改。
  * 
  * @author huagang.li 2014年12月13日 下午3:23:26
  */
-public class ConfigUtilsTest {
+public class RedisConfigUtilsTest {
 
-    @Test(description = "验证'获取Redis服务器列表'方法")
-    public void getRedisServers() {
-        assertEquals(ConfigUtils.getRedisServers(),
-                     "127.0.0.1:6379:Shard-01,127.0.0.1:6380:Shard-02,127.0.0.1:6381:Shard-03");
+    @Test
+    public void getBlockWhenExhausted() {
+        assertEquals(RedisConfigUtils.getBlockWhenExhausted(), false);
     }
 
-    @Test(description = "验证'获取Memcached服务器列表'方法")
-    public void getMemcachedServers() {
-        assertEquals(ConfigUtils.getMemcachedServers(), "127.0.0.1:11211");
+    @Test
+    public void getTestOnBorrow() {
+        assertEquals(RedisConfigUtils.getTestOnBorrow(), false);
+    }
+
+    @Test
+    public void getTestOnReturn() {
+        assertEquals(RedisConfigUtils.getTestOnReturn(), false);
+    }
+
+    @Test
+    public void getTestWhileIdle() {
+        assertEquals(RedisConfigUtils.getTestWhileIdle(), true);
+    }
+
+    @Test
+    public void getTimeBetweenServerStateCheckRunsMillis() {
+        assertEquals(RedisConfigUtils.getTimeBetweenServerStateCheckRunsMillis(), 1000L);
+    }
+
+    @Test
+    public void getPingRetryTimes() {
+        assertEquals(RedisConfigUtils.getPingRetryTimes(), 2);
     }
 
     @Test(dataProvider = "parseRedisServerList", description = "验证'解析Redis服务器列表配置信息'方法")
-    public void parserRedisServerList(String redisServers, int timeoutMillis, String serverInfoStr) {
-        assertEquals(ConfigUtils.parseRedisServerList(redisServers, timeoutMillis).toString(), serverInfoStr);
+    public void parseRedisServerList(String redisServers, int timeoutMillis, String serverInfoStr) {
+        assertEquals(RedisConfigUtils.parseRedisServerList(redisServers, timeoutMillis).toString(), serverInfoStr);
     }
 
     @DataProvider(name = "parseRedisServerList")
@@ -55,13 +76,13 @@ public class ConfigUtilsTest {
         return testData;
     }
 
-    @Test(dataProvider = "parserRedisServerListExp", expectedExceptions = { IllegalArgumentException.class })
-    public void parserRedisServerListExp(String redisServers, int timeoutMillis) {
-        ConfigUtils.parseRedisServerList(redisServers, timeoutMillis);
+    @Test(dataProvider = "parseRedisServerListExp", expectedExceptions = { IllegalArgumentException.class })
+    public void parseRedisServerListExp(String redisServers, int timeoutMillis) {
+        RedisConfigUtils.parseRedisServerList(redisServers, timeoutMillis);
     }
 
-    @DataProvider(name = "parserRedisServerListExp")
-    protected static final Object[][] parserRedisServerListExpTestData() {
+    @DataProvider(name = "parseRedisServerListExp")
+    protected static final Object[][] parseRedisServerListExpTestData() {
         Object[][] testData = new Object[][] {//
                                               //
                 { null, 100 },//

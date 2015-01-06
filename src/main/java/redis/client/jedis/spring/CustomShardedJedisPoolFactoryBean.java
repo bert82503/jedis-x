@@ -15,7 +15,7 @@ import org.springframework.beans.factory.FactoryBean;
 import org.springframework.util.Assert;
 
 import redis.client.jedis.CustomShardedJedisPool;
-import redis.client.util.ConfigUtils;
+import redis.client.util.RedisConfigUtils;
 import redis.clients.jedis.JedisPoolConfig;
 
 /**
@@ -93,7 +93,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
         this.setImmutablePoolConfig();
         CustomShardedJedisPool shardedJedisPool = new CustomShardedJedisPool(
                                                                              poolConfig,
-                                                                             ConfigUtils.parseRedisServerList(redisServers,
+                                                                             RedisConfigUtils.parseRedisServerList(redisServers,
                                                                                                               timeoutMillis));
         return shardedJedisPool;
     }
@@ -106,14 +106,14 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      */
     private void setImmutablePoolConfig() throws IOException {
         // 设置"在连接池耗尽时，借用池对象的方法(ObjectPool#borrowObject())调用"是非阻塞的
-        poolConfig.setBlockWhenExhausted(ConfigUtils.getBlockWhenExhausted());
+        poolConfig.setBlockWhenExhausted(RedisConfigUtils.getBlockWhenExhausted());
 
         // 关闭"在借用或返回池对象时，检测其有效性"（因为它会对集群中的所有节点发送PING命令，对性能影响较大）
-        poolConfig.setTestOnBorrow(ConfigUtils.getTestOnBorrow());
-        poolConfig.setTestOnReturn(ConfigUtils.getTestOnReturn());
+        poolConfig.setTestOnBorrow(RedisConfigUtils.getTestOnBorrow());
+        poolConfig.setTestOnReturn(RedisConfigUtils.getTestOnReturn());
 
         // "Evictor驱逐者守护线程"的相关配置，用它来检测"空闲对象"的有效性
-        poolConfig.setTestWhileIdle(ConfigUtils.getTestWhileIdle());
+        poolConfig.setTestWhileIdle(RedisConfigUtils.getTestWhileIdle());
     }
 
     @Override

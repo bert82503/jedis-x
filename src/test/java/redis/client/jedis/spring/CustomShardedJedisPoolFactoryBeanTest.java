@@ -57,9 +57,7 @@ public class CustomShardedJedisPoolFactoryBeanTest {
 
                 // log Shard info
                 shardInfo = jedis.getShardInfo(key);
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Key: {}, Shard Info: {}", key, shardInfo);
-                }
+                logger.debug("Key: {}, Shard Info: {}", key, shardInfo);
 
                 String statusCode = jedis.set(key, DEFAUL_VALUE);
                 assertEquals(statusCode, RET_OK);

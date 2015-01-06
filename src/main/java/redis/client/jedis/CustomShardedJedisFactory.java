@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import redis.client.pool.GenericTimer;
 import redis.client.pool.JedisServerStateCheckTimerTask;
-import redis.client.util.ConfigUtils;
+import redis.client.util.RedisConfigUtils;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.util.Hashing;
@@ -65,7 +65,7 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
         this.algo = algo;
         this.keyTagPattern = keyTagPattern;
 
-        this.startServerStateCheckTimerTask(ConfigUtils.getTimeBetweenServerStateCheckRunsMillis());
+        this.startServerStateCheckTimerTask(RedisConfigUtils.getTimeBetweenServerStateCheckRunsMillis());
     }
 
     /**
@@ -79,7 +79,7 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
                 serverStateCheckTimerTask = null;
             }
             if (delay > 0) {
-                serverStateCheckTimerTask = new JedisServerStateCheckTimerTask(shards, ConfigUtils.getPingRetryTimes());
+                serverStateCheckTimerTask = new JedisServerStateCheckTimerTask(shards, RedisConfigUtils.getPingRetryTimes());
                 GenericTimer.schedule(serverStateCheckTimerTask, delay, delay);
             }
         }

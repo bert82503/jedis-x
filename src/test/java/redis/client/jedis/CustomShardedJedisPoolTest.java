@@ -19,7 +19,8 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import redis.client.util.ConfigUtils;
+import redis.client.util.RedisConfigUtils;
+import redis.client.util.TestConfigUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
@@ -39,14 +40,14 @@ public class CustomShardedJedisPoolTest {
 
     @BeforeClass
     public void init() throws InterruptedException {
-        List<JedisShardInfo> shards = ConfigUtils.parseRedisServerList(ConfigUtils.getRedisServers(),
-                                                                       ConfigUtils.getTimeoutMillis());
+        List<JedisShardInfo> shards = RedisConfigUtils.parseRedisServerList(TestConfigUtils.getRedisServers(),
+                                                                            TestConfigUtils.getTimeoutMillis());
 
         GenericObjectPoolConfig poolConfig = new JedisPoolConfig();
         // 高并发压测
-        poolConfig.setMaxTotal(ConfigUtils.getMaxTotalNum());
-        poolConfig.setMaxIdle(ConfigUtils.getMaxIdleNum());
-        // poolConfig.setMinIdle(ConfigUtils.getMinIdleNum());
+        poolConfig.setMaxTotal(TestConfigUtils.getMaxTotalNum());
+        poolConfig.setMaxIdle(TestConfigUtils.getMaxIdleNum());
+        // poolConfig.setMinIdle(TestConfigUtils.getMinIdleNum());
         poolConfig.setMinIdle(3); // local test
         // 非阻塞
         poolConfig.setBlockWhenExhausted(false);
@@ -63,18 +64,18 @@ public class CustomShardedJedisPoolTest {
          */
         poolConfig.setTestWhileIdle(true);
         // 每隔5秒钟执行一次，保证异常节点被及时探测到（具体隔多久调度一次，根据业务需求来定）
-        // poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(ConfigUtils.getTimeBetweenEvictionRunsSeconds()));
+        // poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(TestConfigUtils.getTimeBetweenEvictionRunsSeconds()));
         poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(2L)); // local test
         // 关闭后台Evictor守护线程
         // poolConfig.setTimeBetweenEvictionRunsMillis(-1L); // local test
         // 每次检测的空闲对象个数
-        // poolConfig.setNumTestsPerEvictionRun(ConfigUtils.getNumTestsPerEvictionRun());
+        // poolConfig.setNumTestsPerEvictionRun(TestConfigUtils.getNumTestsPerEvictionRun());
         poolConfig.setNumTestsPerEvictionRun(3); // local test
         // 当池对象的空闲时间超过该值时，就被纳入到驱逐检测范围
-        poolConfig.setSoftMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(ConfigUtils.getMinEvictableIdleTimeMinutes()));
+        poolConfig.setSoftMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(TestConfigUtils.getMinEvictableIdleTimeMinutes()));
         // 池的最小驱逐空闲时间(空闲驱逐时间)
         // 当池对象的空闲时间超过该值时，立马被驱逐
-        poolConfig.setMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(ConfigUtils.getMaxEvictableIdleTimeMinutes()));
+        poolConfig.setMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(TestConfigUtils.getMaxEvictableIdleTimeMinutes()));
 
         this.pool = new CustomShardedJedisPool(poolConfig, shards);
     }

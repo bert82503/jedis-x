@@ -19,7 +19,8 @@ import java.util.Set;
 
 import org.testng.annotations.Test;
 
-import redis.client.util.ConfigUtils;
+import redis.client.util.RedisConfigUtils;
+import redis.client.util.TestConfigUtils;
 
 /**
  * Test for {@link ShardedJedis}.
@@ -30,8 +31,8 @@ public class ShardedJedisTest {
 
     @Test
     public void getAllShardInfo() {
-        List<JedisShardInfo> shardInfos = ConfigUtils.parseRedisServerList(ConfigUtils.getRedisServers(),
-                                                                           ConfigUtils.getTimeoutMillis());
+        List<JedisShardInfo> shardInfos = RedisConfigUtils.parseRedisServerList(TestConfigUtils.getRedisServers(),
+                                                                           TestConfigUtils.getTimeoutMillis());
         ShardedJedis shardedJedis = new ShardedJedis(shardInfos);
         try {
             Collection<JedisShardInfo> allClusterShardInfos = shardedJedis.getAllShardInfo();

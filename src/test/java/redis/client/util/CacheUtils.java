@@ -20,16 +20,16 @@ public class CacheUtils {
      */
     public static CustomShardedJedisPool getShardedJedisPool() throws Exception {
         CustomShardedJedisPoolFactoryBean shardedJedisPoolFactory = new CustomShardedJedisPoolFactoryBean();
-        shardedJedisPoolFactory.setRedisServers(ConfigUtils.getRedisServers());
-        shardedJedisPoolFactory.setTimeoutMillis(ConfigUtils.getTimeoutMillis());
-        shardedJedisPoolFactory.setMaxTotalNum(ConfigUtils.getMaxTotalNum());
-        shardedJedisPoolFactory.setMaxIdleNum(ConfigUtils.getMaxIdleNum());
-        shardedJedisPoolFactory.setMinIdleNum(ConfigUtils.getMinIdleNum());
-        shardedJedisPoolFactory.setPoolBehaviour(ConfigUtils.getPoolBehaviour());
-        shardedJedisPoolFactory.setTimeBetweenEvictionRunsSeconds(ConfigUtils.getTimeBetweenEvictionRunsSeconds());
-        shardedJedisPoolFactory.setNumTestsPerEvictionRun(ConfigUtils.getNumTestsPerEvictionRun());
-        shardedJedisPoolFactory.setMinEvictableIdleTimeMinutes(ConfigUtils.getMinEvictableIdleTimeMinutes());
-        shardedJedisPoolFactory.setMaxEvictableIdleTimeMinutes(ConfigUtils.getMaxEvictableIdleTimeMinutes());
+        shardedJedisPoolFactory.setRedisServers(TestConfigUtils.getRedisServers());
+        shardedJedisPoolFactory.setTimeoutMillis(TestConfigUtils.getTimeoutMillis());
+        shardedJedisPoolFactory.setMaxTotalNum(TestConfigUtils.getMaxTotalNum());
+        shardedJedisPoolFactory.setMaxIdleNum(TestConfigUtils.getMaxIdleNum());
+        shardedJedisPoolFactory.setMinIdleNum(TestConfigUtils.getMinIdleNum());
+        shardedJedisPoolFactory.setPoolBehaviour(TestConfigUtils.getPoolBehaviour());
+        shardedJedisPoolFactory.setTimeBetweenEvictionRunsSeconds(TestConfigUtils.getTimeBetweenEvictionRunsSeconds());
+        shardedJedisPoolFactory.setNumTestsPerEvictionRun(TestConfigUtils.getNumTestsPerEvictionRun());
+        shardedJedisPoolFactory.setMinEvictableIdleTimeMinutes(TestConfigUtils.getMinEvictableIdleTimeMinutes());
+        shardedJedisPoolFactory.setMaxEvictableIdleTimeMinutes(TestConfigUtils.getMaxEvictableIdleTimeMinutes());
 
         return shardedJedisPoolFactory.getObject();
     }
@@ -42,15 +42,15 @@ public class CacheUtils {
      */
     public static MemcachedClient getMemcachedClient() throws Exception {
         MemcachedClientFactoryBean memcachedClientFactory = new MemcachedClientFactoryBean();
-        memcachedClientFactory.setServers(ConfigUtils.getMemcachedServers());
-        memcachedClientFactory.setProtocol(ConfigUtils.getProtocol());
-        memcachedClientFactory.setTranscoder(ConfigUtils.getTranscoder());
-        memcachedClientFactory.setOpTimeout(ConfigUtils.getOpTimeout());
-        memcachedClientFactory.setTimeoutExceptionThreshold(ConfigUtils.getTimeoutExceptionThreshold());
-        memcachedClientFactory.setHashAlg(ConfigUtils.getHashAlgorithm());
-        memcachedClientFactory.setLocatorType(ConfigUtils.getLocatorType());
-        memcachedClientFactory.setFailureMode(ConfigUtils.getFailureMode());
-        memcachedClientFactory.setUseNagleAlgorithm(ConfigUtils.getUseNagleAlgorithm());
+        memcachedClientFactory.setServers(TestConfigUtils.getMemcachedServers());
+        memcachedClientFactory.setProtocol(TestConfigUtils.getProtocol());
+        memcachedClientFactory.setTranscoder(TestConfigUtils.getTranscoder());
+        memcachedClientFactory.setOpTimeout(TestConfigUtils.getOpTimeout());
+        memcachedClientFactory.setTimeoutExceptionThreshold(TestConfigUtils.getTimeoutExceptionThreshold());
+        memcachedClientFactory.setHashAlg(TestConfigUtils.getHashAlgorithm());
+        memcachedClientFactory.setLocatorType(TestConfigUtils.getLocatorType());
+        memcachedClientFactory.setFailureMode(TestConfigUtils.getFailureMode());
+        memcachedClientFactory.setUseNagleAlgorithm(TestConfigUtils.getUseNagleAlgorithm());
 
         return (MemcachedClient) memcachedClientFactory.getObject();
     }
