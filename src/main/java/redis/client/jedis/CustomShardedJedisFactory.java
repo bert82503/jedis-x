@@ -79,7 +79,8 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
                 serverStateCheckTimerTask = null;
             }
             if (delay > 0) {
-                serverStateCheckTimerTask = new JedisServerStateCheckTimerTask(shards, RedisConfigUtils.getPingRetryTimes());
+                serverStateCheckTimerTask = new JedisServerStateCheckTimerTask(shards,
+                                                                               RedisConfigUtils.getPingRetryTimes());
                 GenericTimer.schedule(serverStateCheckTimerTask, delay, delay);
             }
         }
@@ -108,9 +109,9 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
     }
 
     /**
-     * 校验整个{@link ShardedJedis}集群中所有的Jedis链接是否正常。
+     * 检测{@link ShardedJedis}持有的Shard列表是否与Redis集群的有效节点完全一样。
      * <p>
-     * <font color="red">这个操作是挺耗时的！</font>
+     * 这个操作是轻量级的，不会与Redis服务器进行交互！
      * <p>
      * {@inheritDoc}
      */
