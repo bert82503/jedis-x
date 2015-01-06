@@ -1,9 +1,9 @@
 jedis-x
 =======
 
-Jedis-x is a [Redis](http://redis.io) Java client and an extension of [Jedis](https://github.com/xetorthio/jedis), 
-can detect and remove the failed node automatically, 
-also can add the failed node that back to normal automatically.<br>
+Jedis-x is a [Redis](http://redis.io) Java client and an extension of [Jedis](https://github.com/xetorthio/jedis). 
+It was primarily built to detect and remove the failed node automatically, 
+also add the failed node that back to normal automatically.<br>
 
 #Reference
 [1] [Redis](http://redis.io)<br>
