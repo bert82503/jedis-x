@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import net.spy.memcached.ConnectionFactoryBuilder.Locator;
 import net.spy.memcached.ConnectionFactoryBuilder.Protocol;
@@ -36,14 +37,16 @@ import redis.clients.jedis.JedisShardInfo;
  */
 public class ConfigUtils {
 
-    private static final Logger logger             = LoggerFactory.getLogger(ConfigUtils.class);
+    private static final Logger logger               = LoggerFactory.getLogger(ConfigUtils.class);
 
-    private static final String BIZ_SERVICE_CONFIG = "properties" + File.separator + "biz.service.properties";
+    private static final String BIZ_SERVICE_CONFIG   = "properties" + File.separator + "biz.service.properties";
+
+    private static final String DEFAULT_REDIS_CONFIG = "properties" + File.separator + "redis.default.properties";
 
     private static Properties   configList;
 
     static {
-        configList = loadPropertyFile(BIZ_SERVICE_CONFIG);
+        configList = loadPropertyFile(DEFAULT_REDIS_CONFIG, BIZ_SERVICE_CONFIG);
     }
 
     /**
@@ -53,10 +56,12 @@ public class ConfigUtils {
      * @return
      * @throws IOException
      */
-    public static Properties loadPropertyFile(String fileName) {
+    public static Properties loadPropertyFile(String... fileNames) {
         Properties configs = new Properties();
         try {
-            configs.load(ConfigUtils.class.getClassLoader().getResourceAsStream(fileName));
+            for (String fileName : fileNames) {
+                configs.load(ConfigUtils.class.getClassLoader().getResourceAsStream(fileName));
+            }
         } catch (IOException ioe) {
             String errMsg = String.format("File '%s' does not exist", BIZ_SERVICE_CONFIG);
             logger.error(errMsg, ioe);
@@ -64,6 +69,43 @@ public class ConfigUtils {
         return configs;
     }
 
+    // 内部默认配置属性(外部不可随意更改)
+    public static boolean getBlockWhenExhausted() {
+        return Boolean.parseBoolean(configList.getProperty("redis.block.when.exhausted", "true"));
+    }
+
+    public static boolean getTestOnBorrow() {
+        return Boolean.parseBoolean(configList.getProperty("redis.test.on.borrow", "false"));
+    }
+
+    public static boolean getTestOnReturn() {
+        return Boolean.parseBoolean(configList.getProperty("redis.test.on.return", "false"));
+    }
+
+    public static boolean getTestWhileIdle() {
+        return Boolean.parseBoolean(configList.getProperty("redis.test.while.idle", "false"));
+    }
+
+    /**
+     * 获取"Redis服务器状态检测"定时任务的运行间隔时间(ms)。
+     * 
+     * @return
+     */
+    public static long getTimeBetweenServerStateCheckRunsMillis() {
+        return TimeUnit.SECONDS.toMillis(Long.parseLong(configList.getProperty("redis.server.state.check.time.between.runs.seconds",
+                                                                               "1")));
+    }
+
+    /**
+     * 获取Redis PING命令的失败重试次数。
+     * 
+     * @return
+     */
+    public static int getPingRetryTimes() {
+        return Integer.parseInt(configList.getProperty("redis.server.state.check.ping.retry.times", "2"));
+    }
+
+    // 公开配置属性
     /**
      * 获取Redis服务器列表。
      * 
@@ -76,54 +118,39 @@ public class ConfigUtils {
     }
 
     public static int getTimeoutMillis() {
-        String sTimeoutMillis = configList.getProperty("redis.timeout.millis", "100");
-        return Integer.parseInt(sTimeoutMillis);
+        return Integer.parseInt(configList.getProperty("redis.timeout.millis", "100"));
     }
 
     public static int getMaxTotalNum() {
-        String sTimeoutMillis = configList.getProperty("redis.max.total.num", "8");
-        return Integer.parseInt(sTimeoutMillis);
+        return Integer.parseInt(configList.getProperty("redis.max.total.num", "10000")); // 8
     }
 
     public static int getMaxIdleNum() {
-        String sTimeoutMillis = configList.getProperty("redis.max.idle.num", "8");
-        return Integer.parseInt(sTimeoutMillis);
+        return Integer.parseInt(configList.getProperty("redis.max.idle.num", "10000")); // 8
     }
 
     public static int getMinIdleNum() {
-        String sTimeoutMillis = configList.getProperty("redis.min.idle.num", "0");
-        return Integer.parseInt(sTimeoutMillis);
+        return Integer.parseInt(configList.getProperty("redis.min.idle.num", "30")); // 0
     }
 
     public static PoolBehaviour getPoolBehaviour() {
-        String poolBehaviour = configList.getProperty("redis.pool.behaviour", "LIFO");
-        return PoolBehaviour.valueOf(poolBehaviour);
+        return PoolBehaviour.valueOf(configList.getProperty("redis.pool.behaviour", "FIFO")); // LIFO
     }
 
     public static long getTimeBetweenEvictionRunsSeconds() {
-        String timeBetweenEvictionRunsSeconds = configList.getProperty("redis.time.between.eviction.runs.seconds",
-                                                                       "-1L");
-        return Long.parseLong(timeBetweenEvictionRunsSeconds);
+        return Long.parseLong(configList.getProperty("redis.time.between.eviction.runs.seconds", "1")); // -1
     }
 
     public static int getNumTestsPerEvictionRun() {
-        String numTestsPerEvictionRun = configList.getProperty("redis.num.tests.per.eviction.run", "3");
-        return Integer.parseInt(numTestsPerEvictionRun);
+        return Integer.parseInt(configList.getProperty("redis.num.tests.per.eviction.run", "10")); // 3
     }
 
     public static long getMinEvictableIdleTimeMinutes() {
-        String minEvictableIdleTimeMinutes = configList.getProperty("redis.min.evictable.idle.time.minutes", "30L");
-        return Long.parseLong(minEvictableIdleTimeMinutes);
+        return Long.parseLong(configList.getProperty("redis.min.evictable.idle.time.minutes", "5")); // 30
     }
 
     public static long getMaxEvictableIdleTimeMinutes() {
-        String maxEvictableIdleTimeMinutes = configList.getProperty("redis.max.evictable.idle.time.minutes", "30L");
-        return Long.parseLong(maxEvictableIdleTimeMinutes);
-    }
-
-    public static int getRemoveAbandonedTimeoutMinutes() {
-        String removeAbandonedTimeoutMinutes = configList.getProperty("redis.remove.abandoned.timeout.minutes", "5");
-        return Integer.parseInt(removeAbandonedTimeoutMinutes);
+        return Long.parseLong(configList.getProperty("redis.max.evictable.idle.time.minutes", "1440")); // 30
     }
 
     /**
@@ -139,45 +166,38 @@ public class ConfigUtils {
     }
 
     public static Protocol getProtocol() {
-        String protocol = configList.getProperty("memcache.protocol", "BINARY");
-        return Protocol.valueOf(protocol);
+        return Protocol.valueOf(configList.getProperty("memcache.protocol", "BINARY"));
     }
 
     public static Transcoder<Object> getTranscoder() {
         SerializingTranscoder transcoder = new SerializingTranscoder();
-        String compressionThreshold = configList.getProperty("memcache.compress.threshold", "1024");
-        transcoder.setCompressionThreshold(Integer.parseInt(compressionThreshold));
+        transcoder.setCompressionThreshold(Integer.parseInt(configList.getProperty("memcache.compress.threshold",
+                                                                                   "1024")));
         return transcoder;
     }
 
     public static long getOpTimeout() {
-        String opTimeout = configList.getProperty("memcache.operation.timeout", "500");
-        return Long.parseLong(opTimeout);
+        return Long.parseLong(configList.getProperty("memcache.operation.timeout", "500"));
     }
 
     public static int getTimeoutExceptionThreshold() {
-        String timeoutExceptionThreshold = configList.getProperty("memcache.exception.timeout", "500");
-        return Integer.parseInt(timeoutExceptionThreshold);
+        return Integer.parseInt(configList.getProperty("memcache.exception.timeout", "500"));
     }
 
     public static HashAlgorithm getHashAlgorithm() {
-        String hashAlg = configList.getProperty("memcache.hash.algorithm", "KETAMA_HASH");
-		return DefaultHashAlgorithm.valueOf(hashAlg);
+        return DefaultHashAlgorithm.valueOf(configList.getProperty("memcache.hash.algorithm", "KETAMA_HASH"));
     }
 
     public static Locator getLocatorType() {
-        String locatorType = configList.getProperty("memcache.locator.type", "CONSISTENT");
-        return Locator.valueOf(locatorType);
+        return Locator.valueOf(configList.getProperty("memcache.locator.type", "CONSISTENT"));
     }
 
     public static FailureMode getFailureMode() {
-        String failureMode = configList.getProperty("memcache.failure.mode", "Redistribute");
-        return FailureMode.valueOf(failureMode);
+        return FailureMode.valueOf(configList.getProperty("memcache.failure.mode", "Redistribute"));
     }
 
     public static boolean getUseNagleAlgorithm() {
-        String useNagleAlgorithm = configList.getProperty("memcache.use.nagle.algorithm", "false");
-        return Boolean.parseBoolean(useNagleAlgorithm);
+        return Boolean.parseBoolean(configList.getProperty("memcache.use.nagle.algorithm", "false"));
     }
 
     /** 服务器信息的分隔符 */

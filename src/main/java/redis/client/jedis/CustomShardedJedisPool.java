@@ -11,8 +11,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.commons.pool2.PooledObjectFactory;
-import org.apache.commons.pool2.SwallowedExceptionListener;
-import org.apache.commons.pool2.impl.AbandonedConfig;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
 import redis.clients.jedis.JedisShardInfo;
@@ -96,10 +94,7 @@ public class CustomShardedJedisPool extends Pool<ShardedJedis> {
     @Override
     public void returnResource(ShardedJedis resource) {
         if (resource != null) {
-            // FIXME ShardedJedis calls resetState twice when using with ShardedJedisPool (Fixes #811) (Jedis 2.6.2)
-            // Pull Request at https://github.com/xetorthio/jedis/pull/822
-            // 如果Jedis客户端升级到2.6.2版本及以上版本时，需要确认一下是否需要打开下面这行代码！
-            // resource.resetState();
+            resource.resetState();
             this.returnResourceObject(resource);
         }
     }
@@ -115,24 +110,6 @@ public class CustomShardedJedisPool extends Pool<ShardedJedis> {
         if (resource != null) {
             this.returnBrokenResourceObject(resource);
         }
-    }
-
-    /**
-     * 设置"被遗弃的对象的剔除机制"配置。
-     * 
-     * @param abandonedConfig
-     */
-    public final void setAbandonedConfig(AbandonedConfig abandonedConfig) {
-        this.internalPool.setAbandonedConfig(abandonedConfig);
-    }
-
-    /**
-     * 设置用于接收"可被对象池吞掉的不可避免的异常"的监视器。
-     * 
-     * @param swallowedExceptionListener
-     */
-    public final void setSwallowedExceptionListener(SwallowedExceptionListener swallowedExceptionListener) {
-        internalPool.setSwallowedExceptionListener(swallowedExceptionListener);
     }
 
 }

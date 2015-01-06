@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -34,9 +32,7 @@ import cache.service.impl.JedisServiceImpl;
  */
 public class RedisServiceTest {
 
-    private static final Logger logger = LoggerFactory.getLogger(RedisServiceTest.class);
-
-    private RedisService        redisService;
+    private RedisService redisService;
 
     @BeforeClass
     public void init() throws Exception {
@@ -47,11 +43,10 @@ public class RedisServiceTest {
         redisService = jedisServiceImpl;
     }
 
-    private static final int DEFAULT_TIMEOUT = (int) TimeUnit.MILLISECONDS.toMillis(100L);
-
     @Test(description = "检查每一台Redis服务器是否运行正常")
     public void checkEachRedisServerRunOk() {
-        List<JedisShardInfo> shards = ConfigUtils.parseRedisServerList(ConfigUtils.getRedisServers(), DEFAULT_TIMEOUT);
+        List<JedisShardInfo> shards = ConfigUtils.parseRedisServerList(ConfigUtils.getRedisServers(),
+                                                                       ConfigUtils.getTimeoutMillis());
         for (JedisShardInfo shardInfo : shards) {
             // try-with-resources, in Java SE 7 and later
             try (JedisPool pool = new JedisPool(new JedisPoolConfig(), shardInfo.getHost(), shardInfo.getPort(),
@@ -66,10 +61,10 @@ public class RedisServiceTest {
 
     @Test(description = "验证 String 的 SET、GET、DEL 命令")
     public void setAndGetAndDel() {
-        set("foo", "bar"); // key 永不过期
-        del("foo", 1L);
+        this.set("foo", "bar"); // key 永不过期
+        this.del("foo", 1L);
         // 数据已被删除，连续第二次delete时，删除操作会失败！
-        del("foo", 0L);
+        this.del("foo", 0L);
     }
 
     private static final String RET_OK = "OK";
@@ -105,18 +100,18 @@ public class RedisServiceTest {
 
     @Test(description = "验证 String 的 SETEX 命令")
     public void setex() {
-        setex("str:7day", TIME_7_DAY, "7 day"); // 相对当前时间，过期时间为7天
-        del("str:7day", 1L);
+        this.setex("str:7day", TIME_7_DAY, "7 day"); // 相对当前时间，过期时间为7天
+        this.del("str:7day", 1L);
 
         // Redis的过期时间没有最大30天限制，可以是任何的正整数，与Memcached不同！
-        setex("str:30day.1s", TIME_30_DAY + 1, "30 day + 1s");
-        del("str:30day.1s", 1L);
+        this.setex("str:30day.1s", TIME_30_DAY + 1, "30 day + 1s");
+        this.del("str:30day.1s", 1L);
 
-        setex("str:1", 1, "1"); // 1秒钟后自动过期
+        this.setex("str:1", 1, "1"); // 1秒钟后自动过期
 
         // 当seconds参数不合法(<= 0)时，返回 null
-        setex("str:0", 0, "0");
-        setex("str:-1", -1, "-1");
+        this.setex("str:0", 0, "0");
+        this.setex("str:-1", -1, "-1");
     }
 
     /**
@@ -231,23 +226,6 @@ public class RedisServiceTest {
 
         // 清空缓存数据
         redisService.zremrangeByScore("zset", Double.MIN_VALUE, Double.MAX_VALUE);
-    }
-
-    @Test(enabled = false, description = "验证\"自动摘除异常(宕机)的Redis服务器，自动添加恢复正常的Redis服务器\"功能")
-    public void autoDetectBrokenRedisServer() throws InterruptedException {
-        String key = null;
-
-        int size = 7;
-        for (int i = 1; i <= size; i++) {
-            key = "st_" + i;
-            String ret = redisService.set(key, "1");
-            assertEquals(ret, RET_OK);
-
-            logger.info("Complete time: {}", Integer.valueOf(i));
-            if (i < size) {
-                TimeUnit.SECONDS.sleep(3L);
-            }
-        }
     }
 
     @AfterClass

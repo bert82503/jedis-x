@@ -7,12 +7,9 @@
  */
 package redis.client.jedis.spring;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.pool2.impl.AbandonedConfig;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.util.Assert;
@@ -34,11 +31,11 @@ import redis.clients.jedis.JedisPoolConfig;
  * redis.max.total.num：在给定的时间可以由连接池分配的对象的数量上限
  * redis.max.idle.num：连接池中空闲实例的数量上限
  * redis.min.idle.num：连接池维护的空闲对象的最小数量
+ * redis.pool.behaviour：对象池管理池对象的行为（LIFO：堆栈 - 后进先出(last in, first out)；FIFO：队列 - 先进先出(first in, first out)）
  * redis.time.between.eviction.runs.seconds："空闲池对象有效性驱逐检测线程"的调度运行间隔时间
  * redis.num.tests.per.eviction.run："驱逐检测线程"每次运行有效性检测的"空闲池对象"数量
  * redis.min.evictable.idle.time.minutes：池对象的最小可驱逐的空闲时间（当池对象的空闲时间超过该属性值时，就被纳入到驱逐检测对象的范围里）
  * redis.max.evictable.idle.time.minutes：池对象的最大可驱逐的空闲时间（当池对象的空闲时间超过该属性值时，会被立刻驱逐并销毁）
- * redis.remove.abandoned.timeout.minutes：移除被废弃的池对象的超时时间
  * </pre>
  * 
  * 【配置示例】<br>
@@ -50,11 +47,11 @@ import redis.clients.jedis.JedisPoolConfig;
  * redis.max.total.num=32768
  * redis.max.idle.num=32768
  * redis.min.idle.num=30
+ * redis.pool.behaviour=FIFO
  * redis.time.between.eviction.runs.seconds=1
  * redis.num.tests.per.eviction.run=10
  * redis.min.evictable.idle.time.minutes=5
  * redis.max.evictable.idle.time.minutes=1440
- * redis.remove.abandoned.timeout.minutes=5
  * </pre>
  * 
  * XML：
@@ -73,7 +70,6 @@ import redis.clients.jedis.JedisPoolConfig;
  *         &lt;property name="numTestsPerEvictionRun" value="${redis.num.tests.per.eviction.run}" />
  *         &lt;property name="minEvictableIdleTimeMinutes" value="${redis.min.evictable.idle.time.minutes}" />
  *         &lt;property name="maxEvictableIdleTimeMinutes" value="${redis.max.evictable.idle.time.minutes}" />
- *         &lt;property name="removeAbandonedTimeoutMinutes" value="${redis.remove.abandoned.timeout.minutes}" />
  * {@literal
  * </bean>
  * }
@@ -83,18 +79,11 @@ import redis.clients.jedis.JedisPoolConfig;
  */
 public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShardedJedisPool> {
 
-    private static final String           DEFAULT_REDIS_CONFIG = "properties" + File.separator
-                                                                 + "redis.default.properties";
-
     /** 对象池的配置信息 */
-    private final GenericObjectPoolConfig poolConfig           = new JedisPoolConfig();
-
-    /** "池对象废弃策略"配置信息 */
-    private final AbandonedConfig         abandonedConfig      = new AbandonedConfig();
+    private final GenericObjectPoolConfig poolConfig = new JedisPoolConfig();
 
     /** Redis集群节点列表信息 */
     private String                        redisServers;
-    // private String shardServers;
 
     /** 链接套接字的连接超时时间、读取超时时间 */
     private int                           timeoutMillis;
@@ -105,8 +94,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
         CustomShardedJedisPool shardedJedisPool = new CustomShardedJedisPool(
                                                                              poolConfig,
                                                                              ConfigUtils.parseRedisServerList(redisServers,
-                                                                                                               timeoutMillis));
-        shardedJedisPool.setAbandonedConfig(abandonedConfig);
+                                                                                                              timeoutMillis));
         return shardedJedisPool;
     }
 
@@ -117,37 +105,15 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @throws IOException
      */
     private void setImmutablePoolConfig() throws IOException {
-        // 通过Redis的默认配置文件来设置以下这些不变属性
-        Properties defaultRedisConfigs = ConfigUtils.loadPropertyFile(DEFAULT_REDIS_CONFIG);
-
         // 设置"在连接池耗尽时，借用池对象的方法(ObjectPool#borrowObject())调用"是非阻塞的
-        boolean blockWhenExhausted = parseBooleanValue(defaultRedisConfigs, "redis.block.when.exhausted");
-        poolConfig.setBlockWhenExhausted(blockWhenExhausted);
+        poolConfig.setBlockWhenExhausted(ConfigUtils.getBlockWhenExhausted());
 
         // 关闭"在借用或返回池对象时，检测其有效性"（因为它会对集群中的所有节点发送PING命令，对性能影响较大）
-        boolean testOnBorrow = parseBooleanValue(defaultRedisConfigs, "redis.test.on.borrow");
-        poolConfig.setTestOnBorrow(testOnBorrow);
-        boolean testOnReturn = parseBooleanValue(defaultRedisConfigs, "redis.test.on.return");
-        poolConfig.setTestOnReturn(testOnReturn);
+        poolConfig.setTestOnBorrow(ConfigUtils.getTestOnBorrow());
+        poolConfig.setTestOnReturn(ConfigUtils.getTestOnReturn());
 
-        /*
-         * "EvictionTimer守护线程"的相关配置，用它来维护"空闲对象"列表和保证集群节点的有效性
-         */
-        boolean testWhileIdle = parseBooleanValue(defaultRedisConfigs, "redis.test.while.idle");
-        poolConfig.setTestWhileIdle(testWhileIdle);
-
-        // 在借用池对象时，关闭"池对象废弃策略"执行，尽量让"EvictionTimer守护线程"来维护
-        boolean removeAbandonedOnBorrow = parseBooleanValue(defaultRedisConfigs, "redis.remove.abandoned.on.borrow");
-        abandonedConfig.setRemoveAbandonedOnBorrow(removeAbandonedOnBorrow);
-        boolean logAbandoned = parseBooleanValue(defaultRedisConfigs, "redis.log.abandoned");
-        abandonedConfig.setLogAbandoned(logAbandoned);
-    }
-
-    /**
-     * 解析字符串为布尔值。
-     */
-    private static boolean parseBooleanValue(Properties props, String key) {
-        return Boolean.parseBoolean(props.getProperty(key));
+        // "Evictor驱逐者守护线程"的相关配置，用它来检测"空闲对象"的有效性
+        poolConfig.setTestWhileIdle(ConfigUtils.getTestWhileIdle());
     }
 
     @Override
@@ -249,7 +215,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
         /** 堆栈 - 后进先出(last in, first out) */
         LIFO,
         /** 队列 - 先进先出(first in, first out) */
-        FIFO, ;
+        FIFO;
     }
 
     /**
@@ -338,22 +304,6 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
                       "'maxEvictableIdleTimeMinutes' property must be greater than 0 : " + maxEvictableIdleTimeMinutes);
 
         poolConfig.setMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(maxEvictableIdleTimeMinutes));
-    }
-
-    /**
-     * 设置移除被废弃的池对象的超时时间(分钟数)。
-     * <p>
-     * 默认值是 5分钟。
-     * 
-     * @param removeAbandonedTimeoutMinutes
-     */
-    public final void setRemoveAbandonedTimeoutMinutes(int removeAbandonedTimeoutMinutes) {
-        Assert.isTrue(removeAbandonedTimeoutMinutes > 0,
-                      "'removeAbandonedTimeoutMinutes' property must be greater than 0 : "
-                              + removeAbandonedTimeoutMinutes);
-
-        abandonedConfig.setRemoveAbandonedOnMaintenance(true);
-        abandonedConfig.setRemoveAbandonedTimeout((int) TimeUnit.MINUTES.toSeconds(removeAbandonedTimeoutMinutes));
     }
 
 }

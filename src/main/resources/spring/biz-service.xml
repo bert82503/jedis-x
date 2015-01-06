@@ -51,7 +51,6 @@
     <property name="numTestsPerEvictionRun" value="${redis.num.tests.per.eviction.run}" />
     <property name="minEvictableIdleTimeMinutes" value="${redis.min.evictable.idle.time.minutes}" />
     <property name="maxEvictableIdleTimeMinutes" value="${redis.max.evictable.idle.time.minutes}" />
-    <property name="removeAbandonedTimeoutMinutes" value="${redis.remove.abandoned.timeout.minutes}" />
   </bean>
 
   <bean id="redisService" class="redis.client.jedis.JedisServiceImpl" destroy-method="close">

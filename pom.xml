@@ -12,7 +12,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jedis.version>2.6.1</jedis.version>
+    <jedis.version>2.6.2</jedis.version>
     <memcached.version>2.11.3</memcached.version>
     <spring-version>3.2.12.RELEASE</spring-version>
   </properties>
