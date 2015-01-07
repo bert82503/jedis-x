@@ -47,7 +47,7 @@ public class RedisServiceTest {
     @Test(description = "检查每一台Redis服务器是否运行正常")
     public void checkEachRedisServerRunOk() {
         List<JedisShardInfo> shards = RedisConfigUtils.parseRedisServerList(TestConfigUtils.getRedisServers(),
-                                                                       TestConfigUtils.getTimeoutMillis());
+                                                                            TestConfigUtils.getTimeoutMillis());
         for (JedisShardInfo shardInfo : shards) {
             // try-with-resources, in Java SE 7 and later
             try (JedisPool pool = new JedisPool(new JedisPoolConfig(), shardInfo.getHost(), shardInfo.getPort(),

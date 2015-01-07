@@ -12,9 +12,8 @@ import static org.testng.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.testng.annotations.Test;
@@ -32,28 +31,27 @@ public class ShardedJedisTest {
     @Test
     public void getAllShardInfo() {
         List<JedisShardInfo> shardInfos = RedisConfigUtils.parseRedisServerList(TestConfigUtils.getRedisServers(),
-                                                                           TestConfigUtils.getTimeoutMillis());
+                                                                                TestConfigUtils.getTimeoutMillis());
         ShardedJedis shardedJedis = new ShardedJedis(shardInfos);
         try {
+            // FIXME "Sharded.getAllShardInfo() returns 160*shards info list not returns the original shards list"
+            // https://github.com/xetorthio/jedis/issues/837
             Collection<JedisShardInfo> allClusterShardInfos = shardedJedis.getAllShardInfo();
             assertEquals(allClusterShardInfos.size(), 160 * shardInfos.size()); // 返回的集群节点数量被放大了 160 倍
             // 过滤所有重复的Shard信息
-            Map<JedisShardInfo, String> shardMap = new HashMap<JedisShardInfo, String>();
-            for (JedisShardInfo clusterShardInfo : allClusterShardInfos) {
-                shardMap.put(clusterShardInfo, "1");
-            }
+            Set<JedisShardInfo> checkedShards = new HashSet<JedisShardInfo>();
+            checkedShards.addAll(allClusterShardInfos);
             // 列表大小和所有元素都必须是完全一样的
-            assertEquals(shardMap.size(), shardInfos.size());
+            assertEquals(checkedShards.size(), shardInfos.size());
             for (JedisShardInfo shardInfo : shardInfos) {
-                assertTrue(shardMap.containsKey(shardInfo));
+                assertTrue(checkedShards.contains(shardInfo));
             }
 
             // 通过new操作将Set类型的Shard列表转换为List类型，其不会创建新对象
-            Set<JedisShardInfo> checkedShardInfos = shardMap.keySet();
-            List<JedisShardInfo> copyShardInfos = new ArrayList<JedisShardInfo>(checkedShardInfos);
-            assertEquals(copyShardInfos.size(), checkedShardInfos.size());
+            List<JedisShardInfo> copyShardInfos = new ArrayList<JedisShardInfo>(checkedShards);
+            assertEquals(copyShardInfos.size(), checkedShards.size());
             for (JedisShardInfo copyShardInfo : copyShardInfos) {
-                assertTrue(checkedShardInfos.contains(copyShardInfo));
+                assertTrue(checkedShards.contains(copyShardInfo));
             }
         } finally {
             shardedJedis.close();

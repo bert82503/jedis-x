@@ -9,9 +9,8 @@ package redis.client.jedis;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -79,7 +78,8 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
                 serverStateCheckTimerTask = null;
             }
             if (delay > 0) {
-                serverStateCheckTimerTask = new JedisServerStateCheckTimerTask(shards, RedisConfigUtils.getPingRetryTimes());
+                serverStateCheckTimerTask = new JedisServerStateCheckTimerTask(shards,
+                                                                               RedisConfigUtils.getPingRetryTimes());
                 GenericTimer.schedule(serverStateCheckTimerTask, delay, delay);
             }
         }
@@ -121,13 +121,8 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
         // https://github.com/xetorthio/jedis/issues/837
         Collection<JedisShardInfo> allClusterShardInfos = shardedJedis.getAllShardInfo(); // 返回的集群节点数量被放大了160倍，详见ShardedJedisTest.getAllShardInfo()测试用例
         // 过滤所有重复的Shard信息
-        Map<JedisShardInfo, String> clusterShardInfoMap = new HashMap<JedisShardInfo, String>();
-        for (JedisShardInfo clusterShardInfo : allClusterShardInfos) {
-            if (!clusterShardInfoMap.containsKey(clusterShardInfo)) {
-                clusterShardInfoMap.put(clusterShardInfo, "1");
-            }
-        }
-        Set<JedisShardInfo> checkedShards = clusterShardInfoMap.keySet();
+        Set<JedisShardInfo> checkedShards = new HashSet<JedisShardInfo>();
+        checkedShards.addAll(allClusterShardInfos);
         logger.debug("Active Shard list for current validated sharded Jedis: {}", checkedShards);
 
         Set<JedisShardInfo> activeShards = serverStateCheckTimerTask.getAllActiveJedisShards();

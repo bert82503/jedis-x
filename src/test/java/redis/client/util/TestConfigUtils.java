@@ -80,7 +80,7 @@ public class TestConfigUtils {
     }
 
     public static int getMaxTotalNum() {
-        return Integer.parseInt(configList.getProperty("redis.max.total.num", "10000")); // 8
+        return Integer.parseInt(configList.getProperty("redis.max.total.num", "10000")); // 8 - 默认值
     }
 
     public static int getMaxIdleNum() {
@@ -108,7 +108,7 @@ public class TestConfigUtils {
     }
 
     public static long getMaxEvictableIdleTimeMinutes() {
-        return Long.parseLong(configList.getProperty("redis.max.evictable.idle.time.minutes", "1440")); // 30
+        return Long.parseLong(configList.getProperty("redis.max.evictable.idle.time.minutes", "1440")); // 30 - 默认值
     }
 
     /**
