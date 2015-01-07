@@ -1,12 +1,14 @@
 jedis-x
 =======
 
-The extension of [Jedis](https://github.com/xetorthio/jedis) framework.<br>
-[Jedis 源码剖析笔记](https://github.com/EdwardLee03/jedis-sr)
+Jedis-x is a [Redis](http://redis.io) Java client and an extension of [Jedis](https://github.com/xetorthio/jedis). 
+It was primarily built to detect and remove the failed node automatically, 
+also add the failed node that back to normal automatically.<br>
 
 #Reference
 [1] [Redis](http://redis.io)<br>
-[2] [Redis - @江南白衣](https://github.com/springside/springside4/wiki/Redis)
+[2] [Redis - @江南白衣](https://github.com/springside/springside4/wiki/Redis)<br>
+[3] [Jedis 源码剖析笔记](https://github.com/EdwardLee03/jedis-sr)<br>
 
 #Change log
 ### 2015.1.6
