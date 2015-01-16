@@ -1,10 +1,19 @@
 /*
- * Copyright 2014 FraudMetrix.cn All right reserved. This software is the
- * confidential and proprietary information of FraudMetrix.cn ("Confidential
- * Information"). You shall not disclose such Confidential Information and shall
- * use it only in accordance with the terms of the license agreement you entered
- * into with FraudMetrix.cn.
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package cache.service;
 
 import java.util.List;
@@ -34,35 +43,52 @@ import java.util.Set;
  * 
  * @author huagang.li 2014年12月12日 上午10:26:14
  */
-public interface RedisService extends ShardedService {
+public interface RedisService extends SwitchService {
+
+    /** 列表或集合的默认最大长度 */
+    int DEFAULT_MAX_LENGTH = 3000;
+
+    /** 列表或有序集合的长度阈值 */
+    int LENGTH_THRESHOLD   = 50;
 
     // =======================================================
     // Key (键) - http://redis.io/commands#generic
     // Key不能太长，比如1024字节，但antirez (Redis作者)也不喜欢太短如"u:1000:pwd"，要表达清楚意思才好。
     // 他私人建议用":"分隔域，用"."作为单词间的连接，如"comment:12345:reply.to"。
     // =======================================================
-    // /**
-    // * 为给定key设置生存时间。<br>
-    // * 当key过期后，它会被自动删除。在Redis中，带有生存时间的key被称为『易失的』(volatile)。
-    // * <p>
-    // * 生存时间可以通过使用DEL命令来删除整个key来移除，或者被SET和GETSET命令覆写。<br>
-    // * 这意味着，如果一个命令只是修改一个带生存时间的key的值而不是用一个新的key值来代替它的话，那么生存时间不会被改变。<br>
-    // * 例如，对一个key执行INCR命令，对一个列表进行LPUSH命令，或者对一个哈希表执行HSET命令，这类操作都不会修改key本身的生存时间。
-    // * <p>
-    // * 时间复杂度: O(1)<br>
-    // * EXPIRE key seconds - http://redis.io/commands/expire
-    // *
-    // * @param key 键
-    // * @param seconds 生存时间(秒数)
-    // * @return 当超时设置成功时，返回1； 当key不存在或者不能为key设置生存时间时，返回0 。
-    // */
-    // long expire(String key, int seconds);
+    /**
+     * 为给定key设置生存时间。<br>
+     * 当key过期后(生存时间为0)，它会被自动删除。在Redis中，带有生存时间的key被称为『易失的』(volatile)。
+     * <p>
+     * 生存时间可以通过使用DEL命令来删除整个key来移除，或者被SET和GETSET命令覆写。<br>
+     * 这意味着，如果一个命令只是修改一个带生存时间的key的值而不是用一个新的key值来代替它的话，那么生存时间不会被改变。<br>
+     * 例如，对一个key执行INCR命令，对一个列表进行LPUSH命令，或者对一个哈希表执行HSET命令，这类操作都不会修改key本身的生存时间。
+     * <p>
+     * 时间复杂度: O(1)<br>
+     * EXPIRE key seconds - http://redis.io/commands/expire
+     *
+     * @param key 键
+     * @param seconds 生存时间(秒数)
+     * @return 当超时设置成功时，返回1；当key不存在或者不能为key设置生存时间时，返回0。
+     */
+    int expire(String key, int seconds);
+
+    /**
+     * 返回给定key的剩余生存时间(TTL, time to live，以秒为单位)。
+     * <p>
+     * 时间复杂度: O(1)<br>
+     * http://redis.io/commands/ttl
+     * 
+     * @param key
+     * @return 当key不存在时，返回-2； 当key存在但没有设置剩余生存时间时，返回-1； 否则，以秒为单位，返回key的剩余生存时间。
+     */
+    long ttl(String key);
 
     /**
      * 删除给定的一个或多个keys。<br>
      * 不存在的key会被忽略。
      * <p>
-     * Time complexity: O(N)，N为被删除的key的数量<br>
+     * 时间复杂度: O(N)，N为被删除的key的数量<br>
      * 删除单个字符串类型的key，时间复杂度为O(1)。<br>
      * 删除单个列表、集合、有序集合或哈希表类型的key，时间复杂度为O(M)，M为以上数据结构内的元素数量。<br>
      * DEL key [key ...] - http://redis.io/commands/del
@@ -70,7 +96,7 @@ public interface RedisService extends ShardedService {
      * @param key 键
      * @return 被删除key的数量；当没有key被删除时，返回0。
      */
-    long del(String key);
+    int del(String key);
 
     // =======================================================
     // String (字符串) - http://redis.io/commands#string
@@ -186,7 +212,8 @@ public interface RedisService extends ShardedService {
     // =======================================================
     /**
      * 返回列表key的长度。<br>
-     * 如果key不存在，则key被解释为一个空列表，返回0。如果key不是列表类型，则返回一个错误。
+     * 如果key不存在，则key被解释为一个空列表，返回0。<br>
+     * 如果key不是列表类型，则返回一个错误。
      * <p>
      * 时间复杂度: O(1)<br>
      * LLEN key - http://redis.io/commands/llen
@@ -194,7 +221,7 @@ public interface RedisService extends ShardedService {
      * @param key 键
      * @return 列表key的长度。
      */
-    long llen(String key);
+    int llen(String key);
 
     // 江湖规矩一般从"左端Push，右端Pop——LPush/RPop"
     /**
@@ -211,7 +238,7 @@ public interface RedisService extends ShardedService {
      * @param values 字符串值列表(<key, value1, value2, ... , valueN>)
      * @return 执行LPUSH命令后，列表的长度。
      */
-    long lpush(String key, String... values);
+    int lpush(String key, String... values);
 
     /**
      * 移除并返回列表key的表尾元素。
@@ -245,7 +272,7 @@ public interface RedisService extends ShardedService {
      * @param stop 结束下标
      * @return 一个列表，包含指定区间内的元素；如果指定区间不包含任何元素，则返回一个空列表。
      */
-    List<String> lrange(String key, long start, long stop);
+    List<String> lrange(String key, int start, int stop);
 
     // LTrim，限制List的大小（比如只保留最新的20条消息）
     /**
@@ -278,7 +305,7 @@ public interface RedisService extends ShardedService {
      * @param stop 结束下标
      * @return 当命令执行成功时，返回OK。
      */
-    String ltrim(String key, long start, long stop);
+    String ltrim(String key, int start, int stop);
 
     // =======================================================
     // Sorted Set (有序集合) - http://redis.io/commands#sorted_set
@@ -292,7 +319,7 @@ public interface RedisService extends ShardedService {
     // 可见，原本可能很大的N被很关键的Log了一下，1000万大小的Set，复杂度也只是几十不到。当然，如果一次命中很多元素，M很大那谁也没办法了。
     // =======================================================
     /**
-     * 将所有给定member元素及其score值加入到有序集key中。<br>
+     * 将所有给定member元素及其score值加入到有序集key中。(默认最大长度为{@link #DEFAULT_MAX_LENGTH})<br>
      * 如果某个member已经是有序集的成员，那么更新这个member的score值，并通过重新插入这个member元素，来保证该member在正确的位置上。
      * <p>
      * 如果key不存在，则创建一个空的有序集并执行ZADD操作。当key存在但不是有序集类型时，返回一个错误。
@@ -305,7 +332,20 @@ public interface RedisService extends ShardedService {
      * @param member 元素
      * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
      */
-    long zadd(String key, double score, String member);
+    int zadd(String key, double score, String member);
+
+    /**
+     * 将所有给定member元素及其score值加入到有序集key中。<br>
+     * <p>
+     * 见{@link #zadd(String, double, String)}文档注释。
+     * 
+     * @param key 键
+     * @param score 元素的分数
+     * @param member 元素
+     * @param maxLength 最大长度阈值
+     * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
+     */
+    int zadd(String key, double score, String member, int maxLength);
 
     // 批量增加
     /**
@@ -317,7 +357,46 @@ public interface RedisService extends ShardedService {
      * @param scoreMembers <元素, 元素的分数>的映射表
      * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
      */
-    long zadd(String key, Map<String, Double> scoreMembers);
+    int zadd(String key, Map<String, Double> scoreMembers);
+
+    /**
+     * 将member元素及其score值加入到有序集key中。
+     * <p>
+     * 见{@link #zadd(String, double, String)}文档注释。
+     * 
+     * @param key 键
+     * @param scoreMembers <元素, 元素的分数>的映射表
+     * @param maxLength 最大长度阈值
+     * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
+     */
+    int zadd(String key, Map<String, Double> scoreMembers, int maxLength);
+
+    /**
+     * 返回有序集key中，指定区间内的成员。
+     * <p>
+     * 其中成员按score值递增(从小到大)来排序，具有相同score值的成员按字典序来排列。
+     * <p>
+     * 时间复杂度: O(log(N)+M)，N为有序集的基数，而M为结果集的基数<br>
+     * ZRANGE key start stop [WITHSCORES] - http://redis.io/commands/zrange
+     * 
+     * @param key
+     * @param start
+     * @param stop
+     * @return 指定区间内，带有score值(可选)的有序集成员的列表。
+     */
+    Set<String> zrange(String key, int start, int stop);
+
+    /**
+     * 返回有序集key中，指定区间内的成员。
+     * <p>
+     * 其中成员的位置按score值递减(从大到小)来排列，具有相同score值的成员按字典序的反序排列。
+     * 
+     * @param key
+     * @param start
+     * @param stop
+     * @return
+     */
+    Set<String> zrevrange(String key, int start, int stop);
 
     // 范围检索
     /**
@@ -390,7 +469,7 @@ public interface RedisService extends ShardedService {
      * @param key
      * @return 当key存在且是有序集类型时，返回有序集的基数；当key不存在时，返回0。
      */
-    long zcard(String key);
+    int zcard(String key);
 
     // 范围移除
     /**
@@ -404,8 +483,25 @@ public interface RedisService extends ShardedService {
      * @param max 检索的最大分数
      * @return 被移除成员的数量。
      */
-    long zremrangeByScore(String key, double min, double max);
+    int zremrangeByScore(String key, double min, double max);
 
-    // long zremrangeByRank(String key, long start, long stop);
+    /**
+     * 移除有序集key中，指定排名(rank)区间内的所有成员。
+     * <p>
+     * 区间分别以下标参数start和stop指出，<font color="red">包含start和stop在内</font>。
+     * <p>
+     * 下标参数start和stop都以0为底，0处是分数最小的那个元素。<br>
+     * 这些索引也可以是负数，表示位移从最高分处开始数。<br>
+     * 例如，-1是分数最高的元素，-2是分数第二高的，依次类推。
+     * <p>
+     * 时间复杂度: O(log(N)+M)，N为有序集的基数，而M为被移除成员的数量<br>
+     * ZREMRANGEBYRANK key start stop - http://redis.io/commands/zremrangebyrank
+     * 
+     * @param key
+     * @param start
+     * @param stop
+     * @return 被移除成员的数量。
+     */
+    int zremrangeByRank(String key, int start, int stop);
 
 }

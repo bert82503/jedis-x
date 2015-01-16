@@ -1,16 +1,29 @@
 /*
- * Copyright 2014 FraudMetrix.cn All right reserved. This software is the
- * confidential and proprietary information of FraudMetrix.cn ("Confidential
- * Information"). You shall not disclose such Confidential Information and shall
- * use it only in accordance with the terms of the license agreement you entered
- * into with FraudMetrix.cn.
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package cache.service.impl;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
@@ -20,7 +33,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import redis.client.jedis.CustomShardedJedisPool;
+import redis.clients.jedis.Response;
 import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPipeline;
 import redis.clients.jedis.exceptions.JedisException;
 import cache.service.RedisService;
 
@@ -32,7 +47,7 @@ import cache.service.RedisService;
 @Resource
 public class JedisServiceImpl implements RedisService {
 
-    private static final Logger    logger = LoggerFactory.getLogger(JedisServiceImpl.class);
+    private static final Logger    logger          = LoggerFactory.getLogger(JedisServiceImpl.class);
 
     /** Redis连接池 */
     @Autowired
@@ -40,6 +55,10 @@ public class JedisServiceImpl implements RedisService {
 
     /** Redis服务启用标识 */
     private boolean                enabled;
+
+    /** 异步任务执行器 */
+    private final ExecutorService  executorService = new ThreadPoolExecutor(30, 10000, 60L, TimeUnit.SECONDS,
+                                                                            new LinkedBlockingQueue<Runnable>(50));
 
     /**
      * 用于单元测试(UT, Unit Test)。
@@ -56,34 +75,62 @@ public class JedisServiceImpl implements RedisService {
     }
 
     @Override
+    public boolean getEnabled() {
+        return enabled;
+    }
+
+    @Override
     public void close() {
         shardedJedisPool.close();
     }
 
-    // /**
-    // * 不清楚这里为什么要过滤？
-    // * <p>
-    // * Redis对key没有任何限制，key中可以包含空格、中文符号等；而Memcached要求key中不能包含空格等。
-    // */
-    // private static String trim(String key) {
-    // return key.replaceAll("[^a-zA-Z0-9\\u4e00-\\u9fa5\\.\\-\\_]", "");
-    // }
-
+    // ---------------- Key (键) ----------------
     @Override
-    public long del(String key) {
+    public int expire(String key, int seconds) {
         if (enabled && StringUtils.isNotBlank(key)) {
             try {
                 ShardedJedis jedis = shardedJedisPool.getResource();
-                long removedKeyNum = jedis.del(key).longValue();
+                int ret = jedis.expire(key, seconds).intValue();
+                jedis.close();
+                return ret;
+            } catch (JedisException e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public long ttl(String key) {
+        if (enabled && StringUtils.isNotBlank(key)) {
+            try {
+                ShardedJedis jedis = shardedJedisPool.getResource();
+                long liveTimeSeconds = jedis.ttl(key).longValue();
+                jedis.close();
+                return liveTimeSeconds;
+            } catch (JedisException e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
+        return -2L;
+    }
+
+    @Override
+    public int del(String key) {
+        if (enabled && StringUtils.isNotBlank(key)) {
+            try {
+                ShardedJedis jedis = shardedJedisPool.getResource();
+                int removedKeyNum = jedis.del(key).intValue();
                 jedis.close();
                 return removedKeyNum;
             } catch (JedisException e) {
                 logger.error(e.getMessage(), e);
             }
         }
-        return 0L;
+        return 0;
     }
 
+    // ---------------- String (字符串) ----------------
     @Override
     public String get(String key) {
         if (enabled && StringUtils.isNotBlank(key)) {
@@ -131,34 +178,35 @@ public class JedisServiceImpl implements RedisService {
         return null;
     }
 
+    // ---------------- List (列表) ----------------
     @Override
-    public long llen(String key) {
+    public int llen(String key) {
         if (enabled && StringUtils.isNotBlank(key)) {
             try {
                 ShardedJedis jedis = shardedJedisPool.getResource();
-                long listLength = jedis.llen(key).longValue();
+                int listLength = jedis.llen(key).intValue();
                 jedis.close();
                 return listLength;
             } catch (JedisException e) {
                 logger.error(e.getMessage(), e);
             }
         }
-        return 0L;
+        return 0;
     }
 
     @Override
-    public long lpush(String key, String... values) {
+    public int lpush(String key, String... values) {
         if (enabled && StringUtils.isNotBlank(key)) {
             try {
                 ShardedJedis jedis = shardedJedisPool.getResource();
-                long pushedListLength = jedis.lpush(key, values).longValue();
+                int pushedListLength = jedis.lpush(key, values).intValue();
                 jedis.close();
                 return pushedListLength;
             } catch (JedisException e) {
                 logger.error(e.getMessage(), e);
             }
         }
-        return 0L;
+        return 0;
     }
 
     @Override
@@ -177,7 +225,7 @@ public class JedisServiceImpl implements RedisService {
     }
 
     @Override
-    public List<String> lrange(String key, long start, long stop) {
+    public List<String> lrange(String key, int start, int stop) {
         if (enabled && StringUtils.isNotBlank(key)) {
             try {
                 ShardedJedis jedis = shardedJedisPool.getResource();
@@ -192,7 +240,7 @@ public class JedisServiceImpl implements RedisService {
     }
 
     @Override
-    public String ltrim(String key, long start, long stop) {
+    public String ltrim(String key, int start, int stop) {
         if (enabled && StringUtils.isNotBlank(key)) {
             try {
                 ShardedJedis jedis = shardedJedisPool.getResource();
@@ -206,34 +254,163 @@ public class JedisServiceImpl implements RedisService {
         return null;
     }
 
+    // ---------------- Sorted Set (有序集合) ----------------
     @Override
-    public long zadd(String key, double score, String member) {
-        if (enabled && StringUtils.isNotBlank(key)) {
-            try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
-                long newElementNum = jedis.zadd(key, score, member).longValue();
-                jedis.close();
-                return newElementNum;
-            } catch (JedisException e) {
-                logger.error(e.getMessage(), e);
-            }
-        }
-        return 0L;
+    public int zadd(String key, double score, String member) {
+        return this.zadd(key, score, member, DEFAULT_MAX_LENGTH);
     }
 
     @Override
-    public long zadd(String key, Map<String, Double> scoreMembers) {
+    public int zadd(String key, double score, String member, int maxLength) {
         if (enabled && StringUtils.isNotBlank(key)) {
             try {
+                int newElementNum = 0;
+                int elementNum = 0;
+
                 ShardedJedis jedis = shardedJedisPool.getResource();
-                long newElementNum = jedis.zadd(key, scoreMembers).longValue();
+                ShardedJedisPipeline pipeline = jedis.pipelined();
+                Response<Long> zaddResponse = pipeline.zadd(key, score, member);
+                Response<Long> zcardResponse = pipeline.zcard(key);
+                pipeline.sync();
                 jedis.close();
+
+                if (zaddResponse.get() != null) {
+                    newElementNum = zaddResponse.get().intValue();
+                }
+                if (zcardResponse.get() != null) {
+                    elementNum = zcardResponse.get().intValue();
+                }
+                if (newElementNum > 0 && elementNum > 0) {
+                    this.asynShrinkZset(key, elementNum, maxLength);
+                }
+
                 return newElementNum;
             } catch (JedisException e) {
                 logger.error(e.getMessage(), e);
             }
         }
-        return 0L;
+        return 0;
+    }
+
+    @Override
+    public int zadd(String key, Map<String, Double> scoreMembers) {
+        return this.zadd(key, scoreMembers, DEFAULT_MAX_LENGTH);
+    }
+
+    @Override
+    public int zadd(String key, Map<String, Double> scoreMembers, int maxLength) {
+        if (enabled && StringUtils.isNotBlank(key)) {
+            try {
+                int newElementNum = 0;
+                int elementNum = 0;
+
+                ShardedJedis jedis = shardedJedisPool.getResource();
+                ShardedJedisPipeline pipeline = jedis.pipelined();
+                Response<Long> zaddResponse = pipeline.zadd(key, scoreMembers);
+                Response<Long> zcardResponse = pipeline.zcard(key);
+                pipeline.sync();
+                jedis.close();
+
+                if (zaddResponse.get() != null) {
+                    newElementNum = zaddResponse.get().intValue();
+                }
+                if (zcardResponse.get() != null) {
+                    elementNum = zcardResponse.get().intValue();
+                }
+                if (newElementNum > 0 && elementNum > 0) {
+                    this.asynShrinkZset(key, elementNum, maxLength);
+                }
+
+                return newElementNum;
+            } catch (JedisException e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 只有当"有序集合"长度超过阈值时，才会进行"异步缩容"操作。
+     * 
+     * @param key 键
+     * @param maxLength 有序集合最大长度
+     */
+    private void asynShrinkZset(String key, int elementNum, int maxLength) {
+        if (elementNum >= maxLength + LENGTH_THRESHOLD) {
+            try {
+                executorService.submit(new ZremrangeByRankRunnable(this, key, elementNum, maxLength));
+            } catch (Exception e) {
+                logger.warn(e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
+     * 通过 zremrangeByRank 命令进行"异步缩容"操作。
+     */
+    private class ZremrangeByRankRunnable implements Runnable {
+
+        private final RedisService redisService;
+        private final String       key;
+        private final int          elementNum;
+        private final int          maxLength;
+
+        public ZremrangeByRankRunnable(RedisService redisService, String key, int elementNum, int maxLength){
+            this.redisService = redisService;
+            this.key = key;
+            this.elementNum = elementNum;
+            this.maxLength = maxLength;
+        }
+
+        /**
+         * 对"有序集合"进行"缩容"操作。
+         */
+        @Override
+        public void run() {
+            long startTime = System.currentTimeMillis();
+
+            int stop = elementNum - maxLength - 1;
+            int removedElementNum = redisService.zremrangeByRank(key, 0, stop);
+            if (removedElementNum != elementNum - maxLength) {
+                logger.warn("Failed to 'zremrangeByRank' of key: {}, elementNum: {}, maxLength: {}", key, elementNum,
+                            maxLength);
+            }
+
+            long runTime = System.currentTimeMillis() - startTime;
+            logger.debug("'zremrangeByRank' of Sorted Set key: {}, removed length: {}, time: {}", key,
+                         removedElementNum, runTime);
+        }
+
+    }
+
+    @Override
+    public Set<String> zrange(String key, int start, int stop) {
+        if (enabled && StringUtils.isNotBlank(key)) {
+            try {
+                ShardedJedis jedis = shardedJedisPool.getResource();
+                Set<String> zset = jedis.zrange(key, start, stop);
+                jedis.close();
+                return zset;
+            } catch (JedisException e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
+        return Collections.emptySet();
+    }
+
+    @Override
+    public Set<String> zrevrange(String key, int start, int stop) {
+        if (enabled && StringUtils.isNotBlank(key)) {
+            try {
+                ShardedJedis jedis = shardedJedisPool.getResource();
+                Set<String> zset = jedis.zrevrange(key, start, stop);
+                jedis.close();
+                return zset;
+            } catch (JedisException e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
+        return Collections.emptySet();
     }
 
     @Override
@@ -297,33 +474,48 @@ public class JedisServiceImpl implements RedisService {
     }
 
     @Override
-    public long zcard(String key) {
+    public int zcard(String key) {
         if (enabled && StringUtils.isNotBlank(key)) {
             try {
                 ShardedJedis jedis = shardedJedisPool.getResource();
-                long zsetElementNum = jedis.zcard(key).longValue();
+                int zsetElementNum = jedis.zcard(key).intValue();
                 jedis.close();
                 return zsetElementNum;
             } catch (JedisException e) {
                 logger.error(e.getMessage(), e);
             }
         }
-        return 0L;
+        return 0;
     }
 
     @Override
-    public long zremrangeByScore(String key, double min, double max) {
+    public int zremrangeByScore(String key, double min, double max) {
         if (enabled && StringUtils.isNotBlank(key)) {
             try {
                 ShardedJedis jedis = shardedJedisPool.getResource();
-                long removedElementNum = jedis.zremrangeByScore(key, min, max);
+                int removedElementNum = jedis.zremrangeByScore(key, min, max).intValue();
                 jedis.close();
                 return removedElementNum;
             } catch (JedisException e) {
                 logger.error(e.getMessage(), e);
             }
         }
-        return 0L;
+        return 0;
+    }
+
+    @Override
+    public int zremrangeByRank(String key, int start, int stop) {
+        if (enabled && StringUtils.isNotBlank(key)) {
+            try {
+                ShardedJedis jedis = shardedJedisPool.getResource();
+                int removedElementNum = jedis.zremrangeByRank(key, start, stop).intValue();
+                jedis.close();
+                return removedElementNum;
+            } catch (JedisException e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
+        return 0;
     }
 
 }
