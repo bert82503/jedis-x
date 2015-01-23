@@ -93,7 +93,7 @@ public class TestConfigUtils {
     }
 
     public static PoolBehaviour getPoolBehaviour() {
-        return PoolBehaviour.valueOf(configList.getProperty("redis.pool.behaviour", "FIFO")); // LIFO
+        return PoolBehaviour.valueOf(configList.getProperty("redis.pool.behaviour", "LIFO")); // LIFO
     }
 
     public static long getTimeBetweenEvictionRunsSeconds() {
@@ -109,7 +109,7 @@ public class TestConfigUtils {
     }
 
     public static long getMaxEvictableIdleTimeMinutes() {
-        return Long.parseLong(configList.getProperty("redis.max.evictable.idle.time.minutes", "1440")); // 30 - 默认值
+        return Long.parseLong(configList.getProperty("redis.max.evictable.idle.time.minutes", "30")); // 30 - 默认值
     }
 
     // ---------------------- 内部默认配置属性(不可随意更改) ----------------------

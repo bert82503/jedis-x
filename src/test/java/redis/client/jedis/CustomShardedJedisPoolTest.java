@@ -30,6 +30,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean.PoolBehaviour;
 import redis.client.util.RedisConfigUtils;
 import redis.client.util.TestConfigUtils;
 import redis.clients.jedis.Jedis;
@@ -62,6 +63,9 @@ public class CustomShardedJedisPoolTest {
         poolConfig.setMaxIdle(TestConfigUtils.getMaxIdleNum());
         // poolConfig.setMinIdle(TestConfigUtils.getMinIdleNum());
         poolConfig.setMinIdle(3); // local test
+        // 对象池管理"池对象"的行为
+        boolean lifo = TestConfigUtils.getPoolBehaviour() == PoolBehaviour.LIFO ? true : false;
+        poolConfig.setLifo(lifo);
         // 非阻塞
         poolConfig.setBlockWhenExhausted(false);
         // 阻塞等待一段时间

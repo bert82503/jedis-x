@@ -61,11 +61,11 @@ import redis.clients.jedis.JedisPoolConfig;
  * redis.max.total.num=32768
  * redis.max.idle.num=32768
  * redis.min.idle.num=30
- * redis.pool.behaviour=FIFO
+ * redis.pool.behaviour=LIFO
  * redis.time.between.eviction.runs.seconds=1
  * redis.num.tests.per.eviction.run=10
  * redis.min.evictable.idle.time.minutes=5
- * redis.max.evictable.idle.time.minutes=1440
+ * redis.max.evictable.idle.time.minutes=30
  * # Internal default configurations (not to change)
  * redis.block.when.exhausted=false
  * redis.test.on.borrow=false
@@ -306,8 +306,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
     /**
      * 设置池对象的最大可驱逐的空闲时间(分钟数)。
      * <p>
-     * 默认值是 30分钟，该属性值必须大于{@link #setMinEvictableIdleTimeMinutes(long)}设置的"最小可驱逐的空闲时间"。<br>
-     * 最好设置为 1天 (1440分钟 = {@code TimeUnit.DAYS.toMinutes(1L)})，因为这样可以保证对象池中的空闲对象的最小数量。
+     * 默认值是 30分钟，该属性值必须大于{@link #setMinEvictableIdleTimeMinutes(long)}设置的"最小可驱逐的空闲时间"。
      * <p>
      * 当池对象的空闲时间超过该属性值时，会被立刻驱逐并销毁。
      * 

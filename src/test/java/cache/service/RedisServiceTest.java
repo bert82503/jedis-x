@@ -19,12 +19,21 @@ package cache.service;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -280,17 +289,34 @@ public class RedisServiceTest {
         assertEquals(ret, 1);
         // ttl (key的剩余生存时间)
         long liveTimeSeconds = redisService.ttl(key);
-        assertTrue(liveTimeSeconds > TIME_7_DAY - 10L);
+        assertTrue(liveTimeSeconds > TIME_7_DAY - 1L);
+        try {
+            TimeUnit.SECONDS.sleep(1L);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         // 添加新数据，ttl 并未失效
         newElementNum = redisService.zadd(key, 23, "23");
         assertEquals(newElementNum, 1L);
         liveTimeSeconds = redisService.ttl(key);
-        assertTrue(liveTimeSeconds > TIME_7_DAY - 10L);
+        assertTrue(liveTimeSeconds > TIME_7_DAY - 2L);
         // 移除若干老数据，ttl 也并未失效
         int removedElementNum = redisService.zremrangeByRank(key, 0, 0);
         assertEquals(removedElementNum, 1);
         liveTimeSeconds = redisService.ttl(key);
-        assertTrue(liveTimeSeconds > TIME_7_DAY - 10L);
+        assertTrue(liveTimeSeconds > TIME_7_DAY - 2L);
+
+        // 设置Key过期时间为 1s
+        ret = redisService.expire(key, 1);
+        assertEquals(ret, 1);
+        try {
+            TimeUnit.SECONDS.sleep(1L);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        // Key已过期不存在
+        liveTimeSeconds = redisService.ttl(key);
+        assertEquals(liveTimeSeconds, -2);
     }
 
     @Test
@@ -309,6 +335,7 @@ public class RedisServiceTest {
 
         int size = 3050;
         for (int i = 1; i <= size; i++) {
+            // 在未加入"有序集合自动异步缩容"功能前尝试
             redisService.zadd(key, i, Integer.toString(i));
         }
 
@@ -332,18 +359,19 @@ public class RedisServiceTest {
     @Test(description = "验证'有序集合在zadd后的长度超过阈值后，会自动进行异步缩容'的功能")
     public void zadd() {
         String key = "zadd";
+        int maxLength = 100;
 
         // 清空缓存数据
         redisService.del(key);
 
-        int size = 3050;
+        int size = maxLength + RedisService.LENGTH_THRESHOLD;
         for (int i = 1; i < size; i++) {
-            redisService.zadd(key, i, Integer.toString(i));
+            redisService.zadd(key, i, Integer.toString(i), maxLength);
         }
         int elementNum = redisService.zcard(key);
-        assertEquals(elementNum, 3049);
+        assertEquals(elementNum, 149);
 
-        redisService.zadd(key, 3050, "3050");
+        redisService.zadd(key, 150, "150", maxLength);
         // 因为插入超过列表长度阈值后，会删除超过长度的元素进行列表缩容
         try {
             TimeUnit.SECONDS.sleep(1L);
@@ -351,7 +379,15 @@ public class RedisServiceTest {
             e.printStackTrace();
         }
         elementNum = redisService.zcard(key);
-        assertEquals(elementNum, RedisService.DEFAULT_MAX_LENGTH);
+        assertEquals(elementNum, maxLength);
+        // 头元素
+        Set<String> elements = redisService.zrange(key, 0, 0);
+        assertEquals(elements.size(), 1);
+        assertEquals(elements.toArray(new String[1])[0], "51");
+        // 尾元素
+        elements = redisService.zrevrange(key, 0, 0);
+        assertEquals(elements.size(), 1);
+        assertEquals(elements.toArray(new String[1])[0], "150");
 
         // 测试批量接口
         int initialCapacity = RedisService.LENGTH_THRESHOLD * 4 / 3 + 1;
@@ -359,7 +395,7 @@ public class RedisServiceTest {
         for (int i = size + 1, len = size + RedisService.LENGTH_THRESHOLD; i <= len; i++) {
             scoreMembers.put(Integer.toString(i), new Double(System.currentTimeMillis()));
         }
-        int newElementNum = redisService.zadd(key, scoreMembers);
+        int newElementNum = redisService.zadd(key, scoreMembers, maxLength);
         assertEquals(newElementNum, RedisService.LENGTH_THRESHOLD);
         try {
             TimeUnit.SECONDS.sleep(1L);
@@ -367,7 +403,122 @@ public class RedisServiceTest {
             e.printStackTrace();
         }
         elementNum = redisService.zcard(key);
-        assertEquals(elementNum, RedisService.DEFAULT_MAX_LENGTH);
+        assertEquals(elementNum, maxLength);
+        // 头元素
+        elements = redisService.zrange(key, 0, 0);
+        assertEquals(elements.size(), 1);
+        assertEquals(elements.toArray(new String[1])[0], "101");
+        // 尾元素
+        elements = redisService.zrevrange(key, 0, 0);
+        assertEquals(elements.size(), 1);
+        assertEquals(elements.toArray(new String[1])[0], "200");
+    }
+
+    private static final Logger   logger          = LoggerFactory.getLogger(RedisServiceTest.class);
+
+    /** 异步任务执行器 */
+    private final ExecutorService executorService = new ThreadPoolExecutor(30, 10000, 60L, TimeUnit.SECONDS,
+                                                                           new LinkedBlockingQueue<Runnable>(50));
+
+    /**
+     * <pre>
+     * redis.pool.behaviour=LIFO
+     * ...
+     * redis.min.evictable.idle.time.minutes=5
+     * redis.max.evictable.idle.time.minutes=30
+     * ...
+     * 
+     * Redis客户端的连接数，随着请求量的大小而上下波动，属于<b>正常情况</b>。
+     * 因为对象池行为使用 LIFO (后进先出，栈) 行为，对象池会重用最热的池对象服务于请求。<br>
+     * 这样，当某一时刻的请求总量不大时，过多的空闲时间超过 5分钟的池对象就会被回收，尽量保证对象池都是热点对象。
+     * </pre>
+     * 
+     * <pre>
+     * redis.pool.behaviour=FIFO
+     * ...
+     * redis.min.evictable.idle.time.minutes=5
+     * redis.max.evictable.idle.time.minutes=1440
+     * ...
+     * 
+     * Redis客户端的连接数，随着时间的推移只增不减，即使减少也是很小量的，属于<font color="red"><b>不正常情况</b></font>。
+     * 因为对象池行为使用 FIFO (先进先出，队列) 行为，对象池内的对象在 5分钟内 都可能被使用过一次，无法被后台"驱逐者线程"释放。<br>
+     * 这样，其连接数就与服务 5分钟内的请求总量成正相关。
+     * </pre>
+     */
+    @Test(enabled = false, description = "模拟并发请求，并观察Redis客户端的连接数")
+    public void concurrentRequest() throws IOException, InterruptedException {
+        String key = "concurrentRequest";
+        String value = "Concurrent Request";
+        Random rand = new Random(System.currentTimeMillis());
+
+        for (int j = 1; j <= 31; j++) {
+            // 模拟并发请求
+            int requestNum = Math.abs(rand.nextInt() % 100);
+            for (int i = 0; i < requestNum; i++) {
+                executorService.submit(new SetRunnable(key, value));
+            }
+
+            // 输出已连接的客户端数
+            String info = redisService.info(key, "clients");
+            BufferedReader reader = new BufferedReader(new StringReader(info));
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("connected_clients")) {
+                    logger.info(line);
+                }
+            }
+
+            logger.info("Complete time: {}, request number: {}", j, requestNum);
+            TimeUnit.MINUTES.sleep(1L);
+        }
+    }
+
+    /**
+     * 异步执行 set 命令。
+     */
+    private class SetRunnable implements Runnable {
+
+        private final String key;
+        private final String value;
+
+        public SetRunnable(String key, String value){
+            this.key = key;
+            this.value = value;
+        }
+
+        @Override
+        public void run() {
+            redisService.set(key, value);
+        }
+
+    }
+
+    /**
+     * <pre>
+     * # Clients
+     * connected_clients:65
+     * client_longest_output_list:0
+     * client_biggest_input_buf:0
+     * blocked_clients:0
+     * </pre>
+     * 
+     * @throws IOException
+     */
+    @Test(enabled = false, description = "查看'INFO命令'的内容格式")
+    public void info() throws IOException {
+        String key = "info";
+        String section = "clients";
+
+        String info = redisService.info(key, section);
+        logger.info(info);
+
+        BufferedReader reader = new BufferedReader(new StringReader(info));
+        String line = null;
+        while ((line = reader.readLine()) != null) {
+            if (line.startsWith("connected_clients")) {
+                logger.info(line);
+            }
+        }
     }
 
     @AfterClass
