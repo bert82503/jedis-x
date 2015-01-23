@@ -28,7 +28,7 @@ import org.springframework.util.Assert;
 import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean.PoolBehaviour;
 
 /**
- * 处理Test属性配置文件的工具类。
+ * 处理测试属性配置文件的工具类。
  * 
  * @author huagang.li 2014年12月13日 下午2:25:52
  */
