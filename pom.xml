@@ -11,9 +11,11 @@
   <url>https://github.com/EdwardLee03/jedis-x</url>
 
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <java.version>1.7</java.version>
+    <java.encoding>UTF-8</java.encoding>
     <jedis.version>2.6.2</jedis.version>
     <spring-version>3.2.12.RELEASE</spring-version>
+    <project.build.sourceEncoding>${java.encoding}</project.build.sourceEncoding>
   </properties>
 
   <dependencies>
@@ -68,4 +70,21 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.2</version>
+          <configuration>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
+            <encoding>${java.encoding}</encoding>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
 </project>
