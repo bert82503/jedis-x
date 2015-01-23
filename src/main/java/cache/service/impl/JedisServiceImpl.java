@@ -16,6 +16,7 @@
 
 package cache.service.impl;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import redis.client.jedis.CustomShardedJedisPool;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPipeline;
@@ -79,22 +81,46 @@ public class JedisServiceImpl implements RedisService {
         return enabled;
     }
 
+    /**
+     * 关闭Redis连接池中所有客户端的链接。
+     */
     @Override
     public void close() {
-        shardedJedisPool.close();
+        if (shardedJedisPool != null) {
+            shardedJedisPool.close();
+        }
+    }
+
+    // ----------------------- Redis Command -----------------------
+    /**
+     * 将使用完成的"分片Jedis池对象"返回给"对象池"。
+     * 
+     * @param jedis
+     */
+    private static void close(ShardedJedis jedis) {
+        if (jedis != null) {
+            try {
+                jedis.close();
+            } catch (JedisException e) {
+                logger.error("ShardedJedis close fail", e);
+            }
+        }
     }
 
     // ---------------- Key (键) ----------------
     @Override
     public int expire(String key, int seconds) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 int ret = jedis.expire(key, seconds).intValue();
-                jedis.close();
                 return ret;
             } catch (JedisException e) {
+                logger.error("'expire' key fail, key: {}, seconds: {}", key, seconds);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
@@ -102,14 +128,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public long ttl(String key) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 long liveTimeSeconds = jedis.ttl(key).longValue();
-                jedis.close();
                 return liveTimeSeconds;
             } catch (JedisException e) {
+                logger.error("'ttl' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return -2L;
@@ -117,14 +146,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int del(String key) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 int removedKeyNum = jedis.del(key).intValue();
-                jedis.close();
                 return removedKeyNum;
             } catch (JedisException e) {
+                logger.error("'del' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
@@ -133,14 +165,17 @@ public class JedisServiceImpl implements RedisService {
     // ---------------- String (字符串) ----------------
     @Override
     public String get(String key) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 String value = jedis.get(key);
-                jedis.close();
                 return value;
             } catch (JedisException e) {
+                logger.error("'get' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return null;
@@ -148,14 +183,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String set(String key, String value) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 String ret = jedis.set(key, value);
-                jedis.close();
                 return ret;
             } catch (JedisException e) {
+                logger.error("'set' key fail, key: {}, value: {}", key, value);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return null;
@@ -163,15 +201,18 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String setex(String key, int seconds, String value) {
-        if (enabled && StringUtils.isNotBlank(key) && null != value) {
+        if (enabled && StringUtils.isNotEmpty(key) && null != value) {
             if (seconds > 0) {
+                ShardedJedis jedis = null;
                 try {
-                    ShardedJedis jedis = shardedJedisPool.getResource();
+                    jedis = shardedJedisPool.getResource();
                     String ret = jedis.setex(key, seconds, value);
-                    jedis.close();
                     return ret;
                 } catch (JedisException e) {
+                    logger.error("'setex' key fail, key: {}, seconds: {}, value: {}", key, seconds, value);
                     logger.error(e.getMessage(), e);
+                } finally {
+                    close(jedis);
                 }
             } // 当seconds参数不合法(<= 0)时，后端会返回一个错误 ("JedisDataException: ERR invalid expire time in setex")，即操作失败
         }
@@ -181,14 +222,17 @@ public class JedisServiceImpl implements RedisService {
     // ---------------- List (列表) ----------------
     @Override
     public int llen(String key) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 int listLength = jedis.llen(key).intValue();
-                jedis.close();
                 return listLength;
             } catch (JedisException e) {
+                logger.error("'llen' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
@@ -196,14 +240,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int lpush(String key, String... values) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 int pushedListLength = jedis.lpush(key, values).intValue();
-                jedis.close();
                 return pushedListLength;
             } catch (JedisException e) {
+                logger.error("'lpush' key fail, key: {}, values: {}", key, Arrays.toString(values));
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
@@ -211,14 +258,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String rpop(String key) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 String value = jedis.rpop(key);
-                jedis.close();
                 return value;
             } catch (JedisException e) {
+                logger.error("'rpop' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return null;
@@ -226,14 +276,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public List<String> lrange(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 List<String> list = jedis.lrange(key, start, stop);
-                jedis.close();
                 return list;
             } catch (JedisException e) {
+                logger.error("'lrange' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return Collections.emptyList();
@@ -241,14 +294,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String ltrim(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 String ret = jedis.ltrim(key, start, stop);
-                jedis.close();
                 return ret;
             } catch (JedisException e) {
+                logger.error("'ltrim' key fail, key: {}, start: {}, stop: {}", key, start, stop);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return null;
@@ -262,23 +318,25 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zadd(String key, double score, String member, int maxLength) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
                 int newElementNum = 0;
                 int elementNum = 0;
 
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 ShardedJedisPipeline pipeline = jedis.pipelined();
                 Response<Long> zaddResponse = pipeline.zadd(key, score, member);
                 Response<Long> zcardResponse = pipeline.zcard(key);
                 pipeline.sync();
-                jedis.close();
 
-                if (zaddResponse.get() != null) {
-                    newElementNum = zaddResponse.get().intValue();
+                Long zaddRes = zaddResponse.get();
+                if (zaddRes != null) {
+                    newElementNum = zaddRes.intValue();
                 }
-                if (zcardResponse.get() != null) {
-                    elementNum = zcardResponse.get().intValue();
+                Long zcardRes = zcardResponse.get();
+                if (zcardRes != null) {
+                    elementNum = zcardRes.intValue();
                 }
                 if (newElementNum > 0 && elementNum > 0) {
                     this.asynShrinkZset(key, elementNum, maxLength);
@@ -286,7 +344,11 @@ public class JedisServiceImpl implements RedisService {
 
                 return newElementNum;
             } catch (JedisException e) {
+                logger.error("'zadd' key fail, key: {}, score: {}, member: {}, maxLength: {}", key, score, member,
+                             maxLength);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
@@ -299,23 +361,25 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zadd(String key, Map<String, Double> scoreMembers, int maxLength) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
                 int newElementNum = 0;
                 int elementNum = 0;
 
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 ShardedJedisPipeline pipeline = jedis.pipelined();
                 Response<Long> zaddResponse = pipeline.zadd(key, scoreMembers);
                 Response<Long> zcardResponse = pipeline.zcard(key);
                 pipeline.sync();
-                jedis.close();
 
-                if (zaddResponse.get() != null) {
-                    newElementNum = zaddResponse.get().intValue();
+                Long zaddRes = zaddResponse.get();
+                if (zaddRes != null) {
+                    newElementNum = zaddRes.intValue();
                 }
-                if (zcardResponse.get() != null) {
-                    elementNum = zcardResponse.get().intValue();
+                Long zcardRes = zcardResponse.get();
+                if (zcardRes != null) {
+                    elementNum = zcardRes.intValue();
                 }
                 if (newElementNum > 0 && elementNum > 0) {
                     this.asynShrinkZset(key, elementNum, maxLength);
@@ -323,7 +387,10 @@ public class JedisServiceImpl implements RedisService {
 
                 return newElementNum;
             } catch (JedisException e) {
+                logger.error("'zadd' key fail, key: {}, scoreMembers: {}, maxLength: {}", key, scoreMembers, maxLength);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
@@ -337,11 +404,7 @@ public class JedisServiceImpl implements RedisService {
      */
     private void asynShrinkZset(String key, int elementNum, int maxLength) {
         if (elementNum >= maxLength + LENGTH_THRESHOLD) {
-            try {
-                executorService.submit(new ZremrangeByRankRunnable(this, key, elementNum, maxLength));
-            } catch (Exception e) {
-                logger.warn(e.getMessage(), e);
-            }
+            executorService.submit(new ZremrangeByRankRunnable(this, key, elementNum, maxLength));
         }
     }
 
@@ -377,7 +440,7 @@ public class JedisServiceImpl implements RedisService {
             }
 
             long runTime = System.currentTimeMillis() - startTime;
-            logger.debug("'zremrangeByRank' of Sorted Set key: {}, removed length: {}, time: {}", key,
+            logger.debug("'zremrangeByRank' of Sorted Set key: {}, removed number: {}, time: {}", key,
                          removedElementNum, runTime);
         }
 
@@ -385,14 +448,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrange(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 Set<String> zset = jedis.zrange(key, start, stop);
-                jedis.close();
                 return zset;
             } catch (JedisException e) {
+                logger.error("'zrange' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return Collections.emptySet();
@@ -400,14 +466,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrevrange(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 Set<String> zset = jedis.zrevrange(key, start, stop);
-                jedis.close();
                 return zset;
             } catch (JedisException e) {
+                logger.error("'zrevrange' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return Collections.emptySet();
@@ -415,14 +484,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrangeByScore(String key, double min, double max) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 Set<String> zset = jedis.zrangeByScore(key, min, max);
-                jedis.close();
                 return zset;
             } catch (JedisException e) {
+                logger.error("'zrangeByScore' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return Collections.emptySet();
@@ -430,14 +502,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrangeByScore(String key, double min, double max, int offset, int count) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 Set<String> zset = jedis.zrangeByScore(key, min, max, offset, count);
-                jedis.close();
                 return zset;
             } catch (JedisException e) {
+                logger.error("'zrangeByScore' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return Collections.emptySet();
@@ -445,14 +520,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrevrangeByScore(String key, double max, double min) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 Set<String> zset = jedis.zrevrangeByScore(key, max, min);
-                jedis.close();
                 return zset;
             } catch (JedisException e) {
+                logger.error("'zrevrangeByScore' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return Collections.emptySet();
@@ -460,14 +538,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrevrangeByScore(String key, double max, double min, int offset, int count) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 Set<String> zset = jedis.zrevrangeByScore(key, max, min, offset, count);
-                jedis.close();
                 return zset;
             } catch (JedisException e) {
+                logger.error("'zrevrangeByScore' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return Collections.emptySet();
@@ -475,14 +556,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zcard(String key) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 int zsetElementNum = jedis.zcard(key).intValue();
-                jedis.close();
                 return zsetElementNum;
             } catch (JedisException e) {
+                logger.error("'zcard' key fail, key: {}", key);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
@@ -490,14 +574,17 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zremrangeByScore(String key, double min, double max) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 int removedElementNum = jedis.zremrangeByScore(key, min, max).intValue();
-                jedis.close();
                 return removedElementNum;
             } catch (JedisException e) {
+                logger.error("'zremrangeByScore' key fail, key: {}, min: {}, max: {}", key, min, max);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
@@ -505,17 +592,37 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zremrangeByRank(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotBlank(key)) {
+        if (enabled && StringUtils.isNotEmpty(key)) {
+            ShardedJedis jedis = null;
             try {
-                ShardedJedis jedis = shardedJedisPool.getResource();
+                jedis = shardedJedisPool.getResource();
                 int removedElementNum = jedis.zremrangeByRank(key, start, stop).intValue();
-                jedis.close();
                 return removedElementNum;
             } catch (JedisException e) {
+                logger.error("'zremrangeByRank' key fail, key: {}, start: {}, stop: {}", key, start, stop);
                 logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
             }
         }
         return 0;
+    }
+
+    @Override
+    public String info(String key, String section) {
+        ShardedJedis shardedJedis = null;
+        try {
+            shardedJedis = shardedJedisPool.getResource();
+            Jedis jedis = shardedJedis.getShard(key);
+            String info = jedis.info(section);
+            return info;
+        } catch (JedisException e) {
+            logger.error("'info' key fail, key: {}", key);
+            logger.error(e.getMessage(), e);
+        } finally {
+            close(shardedJedis);
+        }
+        return "";
     }
 
 }

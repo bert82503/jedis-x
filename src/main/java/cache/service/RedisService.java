@@ -320,6 +320,7 @@ public interface RedisService extends SwitchService {
     // =======================================================
     /**
      * 将所有给定member元素及其score值加入到有序集key中。(默认最大长度为{@link #DEFAULT_MAX_LENGTH})<br>
+     * 如果有序集的长度超过"默认最大长度({@link #DEFAULT_MAX_LENGTH})"，则会自动进行"异步缩容"操作，删除那些最老的元素。<br>
      * 如果某个member已经是有序集的成员，那么更新这个member的score值，并通过重新插入这个member元素，来保证该member在正确的位置上。
      * <p>
      * 如果key不存在，则创建一个空的有序集并执行ZADD操作。当key存在但不是有序集类型时，返回一个错误。
@@ -336,6 +337,7 @@ public interface RedisService extends SwitchService {
 
     /**
      * 将所有给定member元素及其score值加入到有序集key中。<br>
+     * 如果有序集的长度超过"最大长度阈值({@code maxLength})"参数，则会自动进行"异步缩容"操作，删除那些最老的元素。
      * <p>
      * 见{@link #zadd(String, double, String)}文档注释。
      * 
@@ -349,23 +351,25 @@ public interface RedisService extends SwitchService {
 
     // 批量增加
     /**
-     * 将member元素及其score值加入到有序集key中。
+     * 将"member元素及其score值"加入到有序集key中。(默认最大长度为{@link #DEFAULT_MAX_LENGTH})<br>
+     * 如果有序集的长度超过"默认最大长度({@link #DEFAULT_MAX_LENGTH})"，则会自动进行"异步缩容"操作，删除那些最老的元素。
      * <p>
      * 见{@link #zadd(String, double, String)}文档注释。
      * 
      * @param key 键
-     * @param scoreMembers <元素, 元素的分数>的映射表
+     * @param scoreMembers {@literal <元素, 元素的分数>}的映射表
      * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
      */
     int zadd(String key, Map<String, Double> scoreMembers);
 
     /**
-     * 将member元素及其score值加入到有序集key中。
+     * 将"member元素及其score值的映射表"加入到有序集key中。<br>
+     * 如果有序集的长度超过"最大长度阈值({@code maxLength})"参数，则会自动进行"异步缩容"操作，删除那些最老的元素。
      * <p>
      * 见{@link #zadd(String, double, String)}文档注释。
      * 
      * @param key 键
-     * @param scoreMembers <元素, 元素的分数>的映射表
+     * @param scoreMembers {@literal <元素, 元素的分数>}的映射表
      * @param maxLength 最大长度阈值
      * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
      */
@@ -503,5 +507,19 @@ public interface RedisService extends SwitchService {
      * @return 被移除成员的数量。
      */
     int zremrangeByRank(String key, int start, int stop);
+
+    // =======================================================
+    // Server (服务器) - http://redis.io/commands#server
+    // =======================================================
+    /**
+     * 以一种易于解析且易于阅读的格式，返回关于Redis服务器的各种信息和统计数值。
+     * <p>
+     * INFO [section] - http://redis.io/commands/info
+     * 
+     * @param key
+     * @param section
+     * @return
+     */
+    String info(String key, String section);
 
 }

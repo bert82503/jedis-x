@@ -19,7 +19,7 @@ package cache.service;
 import java.io.Closeable;
 
 /**
- * 数据分片服务定义，增加开关功能和资源关闭功能。
+ * 开关服务，包括资源关闭功能。
  * <p>
  * 服务继承{@link Closeable}接口，以便使用JDK 7的 <a
  * href="http://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html">try-with-resources</a>
@@ -44,7 +44,7 @@ public interface SwitchService extends Closeable {
     boolean getEnabled();
 
     /**
-     * 关闭Redis连接池中所有客户端的链接。
+     * 释放服务持有的所有资源。
      * <p>
      * {@inheritDoc}
      */
