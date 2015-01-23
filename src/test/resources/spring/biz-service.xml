@@ -16,28 +16,6 @@
 	<!-- ================================== 引入配置文件 ====================================== -->
 	<context:property-placeholder location="classpath:properties/biz.service.properties" ignore-unresolvable="true" />
 	<context:annotation-config />
-
-	<!-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START memcached 配置 >>>>>>>>>>>>>>>>>>>>>>>>>>>> -->
-	<bean id="memcachedClient" class="net.spy.memcached.spring.MemcachedClientFactoryBean" lazy-init="true">
-		<property name="servers" value="${memcache.server.list}" />
-		<property name="transcoder">
-			<bean class="net.spy.memcached.transcoders.SerializingTranscoder">
-				<property name="compressionThreshold" value="${memcache.compress.threshold}" />
-			</bean>
-		</property>
-		<property name="opTimeout" value="${memcache.operation.timeout}" />
-		<property name="timeoutExceptionThreshold" value="${memcache.exception.timeout}" />
-
-		<property name="hashAlg" value="${memcache.hash.algorithm}" />
-		<property name="locatorType" value="${memcache.locator.type}" />
-		<property name="failureMode" value="${memcache.failure.mode}" />
-		<property name="useNagleAlgorithm" value="${memcache.use.nagle.algorithm}" />
-	</bean>
-
-	<bean id="memcachedService" class="cache.service.memcached.impl.MemcachedServiceImpl">
-		<property name="enabled" value="${memcache.enabled}" />
-	</bean>
-	<!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END memcached 配置 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
 	
 	<!-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START Redis 配置 >>>>>>>>>>>>>>>>>>>>>>>>>>>> -->
   <bean id="shardedJedisPool" class="redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean">
@@ -57,13 +35,5 @@
     <property name="enabled" value="${redis.enabled}" />
   </bean>
   <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END Redis 配置 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
-  
-  <!-- >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START Memcached -> Redis 迁移配置 >>>>>>>>>>>>>>>>>>>>>>>>>>>> -->
-  <bean id="redisServiceAdapter" class="cache.migration.service.RedisServiceAdapter" />
-  
-  <bean id="cacheMigrationService" class="cache.migration.service.impl.CacheMigrationServiceImpl">
-     <property name="readRedisEnabled" value="${cache.migration.read.redis.enabled}" />
-  </bean>
-  <!-- <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END Memcached -> Redis 迁移配置 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<< -->
 
 </beans>
