@@ -1,10 +1,19 @@
 /*
- * Copyright 2014 FraudMetrix.cn All right reserved. This software is the
- * confidential and proprietary information of FraudMetrix.cn ("Confidential
- * Information"). You shall not disclose such Confidential Information and shall
- * use it only in accordance with the terms of the license agreement you entered
- * into with FraudMetrix.cn.
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package redis.client.jedis;
 
 import java.util.List;
@@ -30,17 +39,23 @@ public class CustomShardedJedisPool extends Pool<ShardedJedis> {
      * 
      * @param poolConfig 连接池配置信息
      * @param shards Jedis节点分片信息列表
+     * @param timeBetweenServerStateCheckRunsMillis "Redis服务器状态检测"定时任务的运行间隔时间
+     * @param pingRetryTimes Redis PING命令的失败重试次数
      */
-    public CustomShardedJedisPool(GenericObjectPoolConfig poolConfig, List<JedisShardInfo> shards){
-        this(poolConfig, shards, Hashing.MURMUR_HASH);
+    public CustomShardedJedisPool(GenericObjectPoolConfig poolConfig, List<JedisShardInfo> shards,
+                                  int timeBetweenServerStateCheckRunsMillis, int pingRetryTimes){
+        this(poolConfig, shards, Hashing.MURMUR_HASH, timeBetweenServerStateCheckRunsMillis, pingRetryTimes);
     }
 
-    public CustomShardedJedisPool(GenericObjectPoolConfig poolConfig, List<JedisShardInfo> shards, Hashing algo){
-        this(poolConfig, shards, algo, null);
+    public CustomShardedJedisPool(GenericObjectPoolConfig poolConfig, List<JedisShardInfo> shards, Hashing algo,
+                                  int timeBetweenServerStateCheckRunsMillis, int pingRetryTimes){
+        this(poolConfig, shards, algo, null, timeBetweenServerStateCheckRunsMillis, pingRetryTimes);
     }
 
-    public CustomShardedJedisPool(GenericObjectPoolConfig poolConfig, List<JedisShardInfo> shards, Pattern keyTagPattern){
-        this(poolConfig, shards, Hashing.MURMUR_HASH, keyTagPattern);
+    public CustomShardedJedisPool(GenericObjectPoolConfig poolConfig, List<JedisShardInfo> shards,
+                                  Pattern keyTagPattern, int timeBetweenServerStateCheckRunsMillis, int pingRetryTimes){
+        this(poolConfig, shards, Hashing.MURMUR_HASH, keyTagPattern, timeBetweenServerStateCheckRunsMillis,
+             pingRetryTimes);
     }
 
     /**
@@ -50,10 +65,13 @@ public class CustomShardedJedisPool extends Pool<ShardedJedis> {
      * @param shards Jedis节点分片信息列表
      * @param algo 哈希算法
      * @param keyTagPattern 键标记模式
+     * @param timeBetweenServerStateCheckRunsMillis "Redis服务器状态检测"定时任务的运行间隔时间
+     * @param pingRetryTimes Redis PING命令的失败重试次数
      */
     public CustomShardedJedisPool(GenericObjectPoolConfig poolConfig, List<JedisShardInfo> shards, Hashing algo,
-                                  Pattern keyTagPattern){
-        super(poolConfig, new CustomShardedJedisFactory(shards, algo, keyTagPattern));
+                                  Pattern keyTagPattern, int timeBetweenServerStateCheckRunsMillis, int pingRetryTimes){
+        super(poolConfig, new CustomShardedJedisFactory(shards, algo, keyTagPattern,
+                                                        timeBetweenServerStateCheckRunsMillis, pingRetryTimes));
     }
 
     /**
@@ -71,8 +89,8 @@ public class CustomShardedJedisPool extends Pool<ShardedJedis> {
      * 
      * <pre>
      * 分2个步骤：
-     * 	1. 从Pool<ShardedJedis>中获取一个{@link ShardedJedis}资源；
-     * 	2. 设置{@link ShardedJedis}资源所在的连接池数据源。
+     *  1. 从Pool<ShardedJedis>中获取一个{@link ShardedJedis}资源；
+     *  2. 设置{@link ShardedJedis}资源所在的连接池数据源。
      * </pre>
      * 
      * 可能抛出"Could not get a resource from the pool"的{@link redis.clients.jedis.exceptions.JedisConnectionException

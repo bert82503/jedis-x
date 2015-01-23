@@ -1,7 +1,21 @@
+/*
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package redis.client.util;
 
-import net.spy.memcached.MemcachedClient;
-import net.spy.memcached.spring.MemcachedClientFactoryBean;
 import redis.client.jedis.CustomShardedJedisPool;
 import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean;
 
@@ -10,7 +24,7 @@ import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean;
  * 
  * @author huagang.li 2014年12月29日 下午2:52:07
  */
-public class CacheUtils {
+public class TestCacheUtils {
 
     /**
      * 获取数据分片的Jedis连接池。
@@ -30,29 +44,14 @@ public class CacheUtils {
         shardedJedisPoolFactory.setNumTestsPerEvictionRun(TestConfigUtils.getNumTestsPerEvictionRun());
         shardedJedisPoolFactory.setMinEvictableIdleTimeMinutes(TestConfigUtils.getMinEvictableIdleTimeMinutes());
         shardedJedisPoolFactory.setMaxEvictableIdleTimeMinutes(TestConfigUtils.getMaxEvictableIdleTimeMinutes());
+        shardedJedisPoolFactory.setBlockWhenExhausted(TestConfigUtils.getBlockWhenExhausted());
+        shardedJedisPoolFactory.setTestOnBorrow(TestConfigUtils.getTestOnBorrow());
+        shardedJedisPoolFactory.setTestOnReturn(TestConfigUtils.getTestOnReturn());
+        shardedJedisPoolFactory.setTestWhileIdle(TestConfigUtils.getTestWhileIdle());
+        shardedJedisPoolFactory.setTimeBetweenServerStateCheckRunsSeconds(TestConfigUtils.getTimeBetweenServerStateCheckRunsSeconds());
+        shardedJedisPoolFactory.setPingRetryTimes(TestConfigUtils.getPingRetryTimes());
 
         return shardedJedisPoolFactory.getObject();
-    }
-
-    /**
-     * 获取Memcached客户端。
-     * 
-     * @return
-     * @throws Exception
-     */
-    public static MemcachedClient getMemcachedClient() throws Exception {
-        MemcachedClientFactoryBean memcachedClientFactory = new MemcachedClientFactoryBean();
-        memcachedClientFactory.setServers(TestConfigUtils.getMemcachedServers());
-        memcachedClientFactory.setProtocol(TestConfigUtils.getProtocol());
-        memcachedClientFactory.setTranscoder(TestConfigUtils.getTranscoder());
-        memcachedClientFactory.setOpTimeout(TestConfigUtils.getOpTimeout());
-        memcachedClientFactory.setTimeoutExceptionThreshold(TestConfigUtils.getTimeoutExceptionThreshold());
-        memcachedClientFactory.setHashAlg(TestConfigUtils.getHashAlgorithm());
-        memcachedClientFactory.setLocatorType(TestConfigUtils.getLocatorType());
-        memcachedClientFactory.setFailureMode(TestConfigUtils.getFailureMode());
-        memcachedClientFactory.setUseNagleAlgorithm(TestConfigUtils.getUseNagleAlgorithm());
-
-        return (MemcachedClient) memcachedClientFactory.getObject();
     }
 
 }

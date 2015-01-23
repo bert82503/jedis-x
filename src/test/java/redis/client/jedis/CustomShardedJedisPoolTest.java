@@ -1,15 +1,26 @@
 /*
- * Copyright 2014 FraudMetrix.cn All right reserved. This software is the
- * confidential and proprietary information of FraudMetrix.cn ("Confidential
- * Information"). You shall not disclose such Confidential Information and shall
- * use it only in accordance with the terms of the license agreement you entered
- * into with FraudMetrix.cn.
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package redis.client.jedis;
 
 import static org.testng.Assert.assertEquals;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
@@ -24,11 +35,13 @@ import redis.client.util.TestConfigUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
+import redis.clients.jedis.Response;
 import redis.clients.jedis.ShardedJedis;
+import redis.clients.jedis.ShardedJedisPipeline;
 import redis.clients.jedis.exceptions.JedisException;
 
 /**
- * Test for {@link CustomShardedJedisPool}.
+ * Tests for {@link CustomShardedJedisPool}.
  * 
  * @author huagang.li 2014年12月9日 上午9:33:00
  */
@@ -36,7 +49,7 @@ public class CustomShardedJedisPoolTest {
 
     private static final Logger    logger = LoggerFactory.getLogger(CustomShardedJedisPoolTest.class);
 
-    private CustomShardedJedisPool pool;
+    private CustomShardedJedisPool shardedJedisPool;
 
     @BeforeClass
     public void init() throws InterruptedException {
@@ -77,12 +90,49 @@ public class CustomShardedJedisPoolTest {
         // 当池对象的空闲时间超过该值时，立马被驱逐
         poolConfig.setMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(TestConfigUtils.getMaxEvictableIdleTimeMinutes()));
 
-        this.pool = new CustomShardedJedisPool(poolConfig, shards);
+        this.shardedJedisPool = new CustomShardedJedisPool(poolConfig, shards, (int) TimeUnit.SECONDS.toMillis(1), 2);
     }
 
     private static final String DEFAUL_VALUE = "1";
 
     private static final String RET_OK       = "OK";
+
+    /**
+     * 管道，用于执行一连串不同的命令。
+     * <p>
+     * 特性：各个命令可以被发送到<font color="red">不同的服务器，但不保证所有命令的原子性</font>
+     * <p>
+     * 使用"管道"有更好的性能：以这种方式发送命令，无需等待响应，<br>
+     * 同时在最后才真正读取响应信息，这是非常快的。
+     */
+    @Test(description = "验证'有序集合结合管道(Pipeline)操作的功能'")
+    public void pipeline() {
+        String key = "pipeline";
+
+        try {
+            ShardedJedis jedis = shardedJedisPool.getResource();
+
+            // 清空缓存数据
+            jedis.del(key);
+
+            ShardedJedisPipeline pipeline = jedis.pipelined();
+            Response<Long> newElementNum = pipeline.zadd(key, System.currentTimeMillis(), "23");
+            Map<String, Double> scoreMembers = new HashMap<>(4);
+            scoreMembers.put("10", new Double(System.currentTimeMillis() + 1));
+            scoreMembers.put("7", new Double(System.currentTimeMillis() + 2));
+            pipeline.zadd(key, scoreMembers);
+            Response<Long> elementNum = pipeline.zcard(key);
+            pipeline.sync();
+
+            jedis.close();
+
+            assertEquals(newElementNum.get().intValue(), 1);
+            assertEquals(elementNum.get().intValue(), 3);
+        } catch (JedisException e) {
+            logger.error(e.getMessage(), e);
+        }
+
+    }
 
     @Test(description = "验证\"自动摘除异常(宕机)的Redis服务器，自动添加恢复正常的Redis服务器\"功能")
     public void autoDetectBrokenRedisServer() throws InterruptedException {
@@ -96,7 +146,7 @@ public class CustomShardedJedisPoolTest {
 
             try {
                 // 获取一条Redis连接
-                jedis = pool.getResource();
+                jedis = shardedJedisPool.getResource();
 
                 // log Shard info
                 shardInfo = jedis.getShardInfo(key);
@@ -170,7 +220,7 @@ public class CustomShardedJedisPoolTest {
 
             try {
                 // 获取一条Redis连接
-                jedis = pool.getResource();
+                jedis = shardedJedisPool.getResource();
 
                 // log Shard info
                 shardInfo = jedis.getShardInfo(key);
@@ -217,14 +267,18 @@ public class CustomShardedJedisPoolTest {
             key = "st_" + i;
 
             // 获取一条Redis连接
-            jedis = pool.getResource();
+            jedis = shardedJedisPool.getResource();
 
             // log Shard info
             shardInfo = jedis.getShardInfo(key);
             logger.info("Shard Info: " + shardInfo);
 
-            String ret = jedis.set(key, "1");
-            assertEquals(ret, RET_OK);
+            try {
+                String ret = jedis.set(key, "1");
+                assertEquals(ret, RET_OK);
+            } catch (JedisException e) {
+                logger.error(e.getMessage(), e);
+            }
 
             logger.info("Complete time: {}", Integer.valueOf(i));
             if (i < size) {
@@ -235,8 +289,8 @@ public class CustomShardedJedisPoolTest {
 
     @AfterClass
     public void destroy() {
-        if (null != pool) {
-            pool.close();
+        if (shardedJedisPool != null) {
+            shardedJedisPool.close();
         }
     }
 

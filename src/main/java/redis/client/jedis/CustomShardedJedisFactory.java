@@ -1,10 +1,19 @@
 /*
- * Copyright 2014 FraudMetrix.cn All right reserved. This software is the
- * confidential and proprietary information of FraudMetrix.cn ("Confidential
- * Information"). You shall not disclose such Confidential Information and shall
- * use it only in accordance with the terms of the license agreement you entered
- * into with FraudMetrix.cn.
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package redis.client.jedis;
 
 import java.util.ArrayList;
@@ -22,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import redis.client.pool.GenericTimer;
 import redis.client.pool.JedisServerStateCheckTimerTask;
-import redis.client.util.RedisConfigUtils;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.util.Hashing;
@@ -58,19 +66,22 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
      * @param shards Jedis分片节点信息列表
      * @param algo 哈希算法
      * @param keyTagPattern 键标记模式
+     * @param timeBetweenServerStateCheckRunsMillis "Redis服务器状态检测"定时任务的运行间隔时间
+     * @param pingRetryTimes Redis PING命令的失败重试次数
      */
-    public CustomShardedJedisFactory(List<JedisShardInfo> shards, Hashing algo, Pattern keyTagPattern){
+    public CustomShardedJedisFactory(List<JedisShardInfo> shards, Hashing algo, Pattern keyTagPattern,
+                                     int timeBetweenServerStateCheckRunsMillis, int pingRetryTimes){
         this.shards = shards;
         this.algo = algo;
         this.keyTagPattern = keyTagPattern;
 
-        this.startServerStateCheckTimerTask(RedisConfigUtils.getTimeBetweenServerStateCheckRunsMillis());
+        this.startServerStateCheckTimerTask(timeBetweenServerStateCheckRunsMillis, pingRetryTimes);
     }
 
     /**
      * 启动"Redis服务器状态检测"定时任务。
      */
-    private final void startServerStateCheckTimerTask(long delay) {
+    private final void startServerStateCheckTimerTask(long delay, int pingRetryTimes) {
         synchronized (serverStateCheckLock) { // 同步锁
             if (null != serverStateCheckTimerTask) {
                 // 先释放申请的资源
@@ -78,8 +89,7 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
                 serverStateCheckTimerTask = null;
             }
             if (delay > 0) {
-                serverStateCheckTimerTask = new JedisServerStateCheckTimerTask(shards,
-                                                                               RedisConfigUtils.getPingRetryTimes());
+                serverStateCheckTimerTask = new JedisServerStateCheckTimerTask(shards, pingRetryTimes);
                 GenericTimer.schedule(serverStateCheckTimerTask, delay, delay);
             }
         }
@@ -108,9 +118,9 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
     }
 
     /**
-     * 检测{@link ShardedJedis}持有的Shard列表是否与Redis集群的有效节点完全一样。
+     * 校验整个{@link ShardedJedis}集群中所有的Jedis链接是否正常。
      * <p>
-     * 这个操作是轻量级的，不会与Redis服务器进行交互！
+     * <font color="red">这个操作是挺耗时的！</font>
      * <p>
      * {@inheritDoc}
      */
@@ -121,8 +131,7 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
         // https://github.com/xetorthio/jedis/issues/837
         Collection<JedisShardInfo> allClusterShardInfos = shardedJedis.getAllShardInfo(); // 返回的集群节点数量被放大了160倍，详见ShardedJedisTest.getAllShardInfo()测试用例
         // 过滤所有重复的Shard信息
-        Set<JedisShardInfo> checkedShards = new HashSet<JedisShardInfo>();
-        checkedShards.addAll(allClusterShardInfos);
+        Set<JedisShardInfo> checkedShards = new HashSet<JedisShardInfo>(allClusterShardInfos);
         logger.debug("Active Shard list for current validated sharded Jedis: {}", checkedShards);
 
         Set<JedisShardInfo> activeShards = serverStateCheckTimerTask.getAllActiveJedisShards();
@@ -133,14 +142,12 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
             logger.debug("Active Shard list after updated: {}", shards);
             return false;
         } else { // 尽管节点数相同，但可能真实的节点列表是不同的(如，一台节点恢复正常了，正好另一台节点出现了异常)
-            for (JedisShardInfo checkedShard : checkedShards) {
-                if (!activeShards.contains(checkedShard)) {
-                    logger.debug("Find a pooled sharded Jedis is updated");
+            if (!activeShards.containsAll(checkedShards)) {
+                logger.debug("Find a pooled sharded Jedis is updated");
 
-                    shards = new ArrayList<JedisShardInfo>(activeShards);
-                    logger.debug("Active Shard list after updated: {}", shards);
-                    return false;
-                }
+                shards = new ArrayList<JedisShardInfo>(activeShards);
+                logger.debug("Active Shard list after updated: {}", shards);
+                return false;
             }
         }
 

@@ -1,13 +1,21 @@
 /*
- * Copyright 2014 FraudMetrix.cn All right reserved. This software is the
- * confidential and proprietary information of FraudMetrix.cn ("Confidential
- * Information"). You shall not disclose such Confidential Information and shall
- * use it only in accordance with the terms of the license agreement you entered
- * into with FraudMetrix.cn.
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package redis.client.jedis.spring;
 
-import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
@@ -36,6 +44,12 @@ import redis.clients.jedis.JedisPoolConfig;
  * redis.num.tests.per.eviction.run："驱逐检测线程"每次运行有效性检测的"空闲池对象"数量
  * redis.min.evictable.idle.time.minutes：池对象的最小可驱逐的空闲时间（当池对象的空闲时间超过该属性值时，就被纳入到驱逐检测对象的范围里）
  * redis.max.evictable.idle.time.minutes：池对象的最大可驱逐的空闲时间（当池对象的空闲时间超过该属性值时，会被立刻驱逐并销毁）
+ * redis.block.when.exhausted：是否在池对象耗尽时阻塞借用
+ * redis.test.on.borrow：是否在池对象借用时检测
+ * redis.test.on.return：是否在池对象返回时检测
+ * redis.test.while.idle：是否当池对象空闲时检测
+ * redis.server.state.check.time.between.runs.seconds："Redis服务器状态检测"定时任务的运行间隔时间
+ * redis.server.state.check.ping.retry.times：PING命令的失败重试次数
  * </pre>
  * 
  * 【配置示例】<br>
@@ -52,6 +66,13 @@ import redis.clients.jedis.JedisPoolConfig;
  * redis.num.tests.per.eviction.run=10
  * redis.min.evictable.idle.time.minutes=5
  * redis.max.evictable.idle.time.minutes=1440
+ * # Internal default configurations (not to change)
+ * redis.block.when.exhausted=false
+ * redis.test.on.borrow=false
+ * redis.test.on.return=false
+ * redis.test.while.idle=true
+ * redis.server.state.check.time.between.runs.seconds=1
+ * redis.server.state.check.ping.retry.times=2
  * </pre>
  * 
  * XML：
@@ -70,6 +91,12 @@ import redis.clients.jedis.JedisPoolConfig;
  *         &lt;property name="numTestsPerEvictionRun" value="${redis.num.tests.per.eviction.run}" />
  *         &lt;property name="minEvictableIdleTimeMinutes" value="${redis.min.evictable.idle.time.minutes}" />
  *         &lt;property name="maxEvictableIdleTimeMinutes" value="${redis.max.evictable.idle.time.minutes}" />
+ *         &lt;property name="blockWhenExhausted" value="${redis.block.when.exhausted}" />
+ *         &lt;property name="testOnBorrow" value="${redis.test.on.borrow}" />
+ *         &lt;property name="testOnReturn" value="${redis.test.on.return}" />
+ *         &lt;property name="testWhileIdle" value="${redis.test.while.idle}" />
+ *         &lt;property name="timeBetweenServerStateCheckRunsSeconds" value="${redis.server.state.check.time.between.runs.seconds}" />
+ *         &lt;property name="pingRetryTimes" value="${redis.server.state.check.ping.retry.times}" />
  * {@literal
  * </bean>
  * }
@@ -88,32 +115,21 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
     /** 链接套接字的连接超时时间、读取超时时间 */
     private int                           timeoutMillis;
 
+    /** "Redis服务器状态检测"定时任务的运行间隔时间 */
+    private int                           timeBetweenServerStateCheckRunsMillis;
+
+    /** Redis PING命令的失败重试次数 */
+    private int                           pingRetryTimes;
+
     @Override
     public CustomShardedJedisPool getObject() throws Exception {
-        this.setImmutablePoolConfig();
         CustomShardedJedisPool shardedJedisPool = new CustomShardedJedisPool(
                                                                              poolConfig,
                                                                              RedisConfigUtils.parseRedisServerList(redisServers,
-                                                                                                              timeoutMillis));
+                                                                                                                   timeoutMillis),
+                                                                             timeBetweenServerStateCheckRunsMillis,
+                                                                             pingRetryTimes);
         return shardedJedisPool;
-    }
-
-    /**
-     * 设置一些不可改变的配置属性。<br>
-     * <font color="red">注意：</font>该方法里设置的配置信息不能随意更改！
-     * 
-     * @throws IOException
-     */
-    private void setImmutablePoolConfig() throws IOException {
-        // 设置"在连接池耗尽时，借用池对象的方法(ObjectPool#borrowObject())调用"是非阻塞的
-        poolConfig.setBlockWhenExhausted(RedisConfigUtils.getBlockWhenExhausted());
-
-        // 关闭"在借用或返回池对象时，检测其有效性"（因为它会对集群中的所有节点发送PING命令，对性能影响较大）
-        poolConfig.setTestOnBorrow(RedisConfigUtils.getTestOnBorrow());
-        poolConfig.setTestOnReturn(RedisConfigUtils.getTestOnReturn());
-
-        // "Evictor驱逐者守护线程"的相关配置，用它来检测"空闲对象"的有效性
-        poolConfig.setTestWhileIdle(RedisConfigUtils.getTestWhileIdle());
     }
 
     @Override
@@ -304,6 +320,61 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
                       "'maxEvictableIdleTimeMinutes' property must be greater than 0 : " + maxEvictableIdleTimeMinutes);
 
         poolConfig.setMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(maxEvictableIdleTimeMinutes));
+    }
+
+    // ------------------ 内部默认配置属性(不可随意更改) ------------------
+    /**
+     * 设置"在池对象耗尽时，借用池对象的方法(ObjectPool#borrowObject())调用"是非阻塞的。
+     * 
+     * @param blockWhenExhausted 是否在池对象耗尽时阻塞借用(false)
+     */
+    public final void setBlockWhenExhausted(boolean blockWhenExhausted) {
+        poolConfig.setBlockWhenExhausted(blockWhenExhausted);
+    }
+
+    /**
+     * 关闭"在借用池对象时，检测其有效性"。（因为这样对性能影响较大）
+     * 
+     * @param testOnBorrow 是否在池对象借用时检测(false)
+     */
+    public final void setTestOnBorrow(boolean testOnBorrow) {
+        poolConfig.setTestOnBorrow(testOnBorrow);
+    }
+
+    /**
+     * 关闭"在返回池对象时，检测其有效性"。（因为这样对性能影响较大）
+     * 
+     * @param testOnReturn 是否在池对象返回时检测(false)
+     */
+    public final void setTestOnReturn(boolean testOnReturn) {
+        poolConfig.setTestOnReturn(testOnReturn);
+    }
+
+    /**
+     * "Evictor驱逐者守护线程"的相关配置，用它来检测"空闲对象"的有效性。
+     * 
+     * @param testWhileIdle 是否当池对象空闲时检测(true)
+     */
+    public final void setTestWhileIdle(boolean testWhileIdle) {
+        poolConfig.setTestWhileIdle(testWhileIdle);
+    }
+
+    /**
+     * 设置"Redis服务器状态检测"定时任务的运行间隔时间。
+     * 
+     * @param timeBetweenServerStateCheckRunsSeconds "Redis服务器状态检测"定时任务的运行间隔时间(1)
+     */
+    public final void setTimeBetweenServerStateCheckRunsSeconds(int timeBetweenServerStateCheckRunsSeconds) {
+        timeBetweenServerStateCheckRunsMillis = (int) TimeUnit.SECONDS.toMillis(timeBetweenServerStateCheckRunsSeconds);
+    }
+
+    /**
+     * 设置Redis PING命令的失败重试次数。
+     * 
+     * @param pingRetryTimes PING命令的失败重试次数(2)
+     */
+    public final void setPingRetryTimes(int pingRetryTimes) {
+        this.pingRetryTimes = pingRetryTimes;
     }
 
 }

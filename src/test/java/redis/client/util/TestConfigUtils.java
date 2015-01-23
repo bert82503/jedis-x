@@ -1,24 +1,25 @@
 /*
- * Copyright 2014 FraudMetrix.cn All right reserved. This software is the
- * confidential and proprietary information of FraudMetrix.cn ("Confidential
- * Information"). You shall not disclose such Confidential Information and shall
- * use it only in accordance with the terms of the license agreement you entered
- * into with FraudMetrix.cn.
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package redis.client.util;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Properties;
-
-import net.spy.memcached.ConnectionFactoryBuilder.Locator;
-import net.spy.memcached.ConnectionFactoryBuilder.Protocol;
-import net.spy.memcached.DefaultHashAlgorithm;
-import net.spy.memcached.FailureMode;
-import net.spy.memcached.HashAlgorithm;
-import net.spy.memcached.transcoders.SerializingTranscoder;
-import net.spy.memcached.transcoders.Transcoder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ import org.springframework.util.Assert;
 import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean.PoolBehaviour;
 
 /**
- * 处理属性配置信息文件的工具类。
+ * 处理Test属性配置文件的工具类。
  * 
  * @author huagang.li 2014年12月13日 下午2:25:52
  */
@@ -111,51 +112,39 @@ public class TestConfigUtils {
         return Long.parseLong(configList.getProperty("redis.max.evictable.idle.time.minutes", "1440")); // 30 - 默认值
     }
 
+    // ---------------------- 内部默认配置属性(不可随意更改) ----------------------
+    public static boolean getBlockWhenExhausted() {
+        return Boolean.parseBoolean(configList.getProperty("redis.block.when.exhausted", "true"));
+    }
+
+    public static boolean getTestOnBorrow() {
+        return Boolean.parseBoolean(configList.getProperty("redis.test.on.borrow", "false"));
+    }
+
+    public static boolean getTestOnReturn() {
+        return Boolean.parseBoolean(configList.getProperty("redis.test.on.return", "false"));
+    }
+
+    public static boolean getTestWhileIdle() {
+        return Boolean.parseBoolean(configList.getProperty("redis.test.while.idle", "false"));
+    }
+
     /**
-     * 获取Memcached服务器列表。
+     * 获取"Redis服务器状态检测"定时任务的运行间隔时间。
      * 
      * @return
      */
-    public static String getMemcachedServers() {
-        String memcachedServers = configList.getProperty("memcache.server.list");
-        Assert.notNull(memcachedServers, "'memcache.server.list' is not configured in '" + BIZ_SERVICE_CONFIG
-                                         + "' file");
-        return memcachedServers;
+    public static int getTimeBetweenServerStateCheckRunsSeconds() {
+        return Integer.parseInt(configList.getProperty("redis.server.state.check.time.between.runs.seconds", "1"));
     }
 
-    public static Protocol getProtocol() {
-        return Protocol.valueOf(configList.getProperty("memcache.protocol", "BINARY"));
-    }
-
-    public static Transcoder<Object> getTranscoder() {
-        SerializingTranscoder transcoder = new SerializingTranscoder();
-        transcoder.setCompressionThreshold(Integer.parseInt(configList.getProperty("memcache.compress.threshold",
-                                                                                   "1024")));
-        return transcoder;
-    }
-
-    public static long getOpTimeout() {
-        return Long.parseLong(configList.getProperty("memcache.operation.timeout", "500"));
-    }
-
-    public static int getTimeoutExceptionThreshold() {
-        return Integer.parseInt(configList.getProperty("memcache.exception.timeout", "500"));
-    }
-
-    public static HashAlgorithm getHashAlgorithm() {
-        return DefaultHashAlgorithm.valueOf(configList.getProperty("memcache.hash.algorithm", "KETAMA_HASH"));
-    }
-
-    public static Locator getLocatorType() {
-        return Locator.valueOf(configList.getProperty("memcache.locator.type", "CONSISTENT"));
-    }
-
-    public static FailureMode getFailureMode() {
-        return FailureMode.valueOf(configList.getProperty("memcache.failure.mode", "Redistribute"));
-    }
-
-    public static boolean getUseNagleAlgorithm() {
-        return Boolean.parseBoolean(configList.getProperty("memcache.use.nagle.algorithm", "false"));
+    /**
+     * 获取Redis PING命令的失败重试次数。
+     * 
+     * @return
+     */
+    public static int getPingRetryTimes() {
+        return Integer.parseInt(configList.getProperty("redis.server.state.check.ping.retry.times", "2"));
     }
 
 }

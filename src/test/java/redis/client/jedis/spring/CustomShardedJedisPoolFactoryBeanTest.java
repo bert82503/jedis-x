@@ -1,10 +1,19 @@
 /*
- * Copyright 2014 FraudMetrix.cn All right reserved. This software is the
- * confidential and proprietary information of FraudMetrix.cn ("Confidential
- * Information"). You shall not disclose such Confidential Information and shall
- * use it only in accordance with the terms of the license agreement you entered
- * into with FraudMetrix.cn.
+ * Copyright 2002-2014 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+
 package redis.client.jedis.spring;
 
 import static org.testng.Assert.assertEquals;
@@ -16,13 +25,13 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import redis.client.jedis.CustomShardedJedisPool;
-import redis.client.util.CacheUtils;
+import redis.client.util.TestCacheUtils;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.exceptions.JedisException;
 
 /**
- * Test for {@link CustomShardedJedisPoolFactoryBean}.
+ * Tests for {@link CustomShardedJedisPoolFactoryBean}.
  * 
  * @author huagang.li 2014年12月13日 下午3:22:36
  */
@@ -30,11 +39,11 @@ public class CustomShardedJedisPoolFactoryBeanTest {
 
     private static final Logger    logger = LoggerFactory.getLogger(CustomShardedJedisPoolFactoryBeanTest.class);
 
-    private CustomShardedJedisPool pool;
+    private CustomShardedJedisPool shardedJedisPool;
 
     @BeforeClass
     public void init() throws Exception {
-        pool = CacheUtils.getShardedJedisPool();
+        shardedJedisPool = TestCacheUtils.getShardedJedisPool();
     }
 
     private static final String DEFAUL_VALUE = "bar";
@@ -53,7 +62,7 @@ public class CustomShardedJedisPoolFactoryBeanTest {
 
             try {
                 // 获取一个Jedis集群池对象
-                jedis = this.pool.getResource();
+                jedis = shardedJedisPool.getResource();
 
                 // log Shard info
                 shardInfo = jedis.getShardInfo(key);
@@ -77,8 +86,8 @@ public class CustomShardedJedisPoolFactoryBeanTest {
 
     @AfterClass
     public void destroy() {
-        if (null != pool) {
-            pool.close();
+        if (shardedJedisPool != null) {
+            shardedJedisPool.close();
         }
     }
 
