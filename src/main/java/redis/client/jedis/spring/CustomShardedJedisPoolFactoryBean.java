@@ -20,9 +20,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.beans.factory.FactoryBean;
-import org.springframework.util.Assert;
 
 import redis.client.jedis.CustomShardedJedisPool;
+import redis.client.util.AssertUtils;
 import redis.client.util.RedisConfigUtils;
 import redis.clients.jedis.JedisPoolConfig;
 
@@ -145,7 +145,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
     /**
      * 设置Redis集群的节点列表信息。
      * <p>
-     *
+     * 
      * <pre>
      * Redis节点列表的配置格式：
      *     redisServers："redisServer[, redisServer ...]"
@@ -155,11 +155,11 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      *     "127.0.0.1:6379:Shard-01,127.0.0.1:6380:Shard-02,127.0.0.1:6381:Shard-03"
      *     "127.0.0.1:6379:Shard-01:1,127.0.0.1:6380:Shard-02:1,127.0.0.1:6381:Shard-03:1"
      * </pre>
-     *
+     * 
      * @param redisServers Redis集群节点列表信息
      */
     public final void setRedisServers(String redisServers) {
-        Assert.notNull(redisServers, "'redisServers' property must not be null");
+        AssertUtils.notEmpty(redisServers, "'redisServers' property must not be null");
 
         this.redisServers = redisServers;
     }
@@ -170,7 +170,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @param timeoutMillis 套接字的连接超时时间和读取超时时间(ms)
      */
     public final void setTimeoutMillis(int timeoutMillis) {
-        Assert.isTrue(timeoutMillis > 0, "'timeoutMillis' property must be greater than 0 : " + timeoutMillis);
+        AssertUtils.isTrue(timeoutMillis > 0, "'timeoutMillis' property must be greater than 0 : " + timeoutMillis);
 
         this.timeoutMillis = timeoutMillis;
     }
@@ -185,7 +185,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @see org.apache.commons.pool2.impl.GenericObjectPool#setMaxTotal(int)
      */
     public final void setMaxTotalNum(int maxTotalNum) {
-        Assert.isTrue(maxTotalNum > 0, "'maxTotalNum' property must be greater than 0 : " + maxTotalNum);
+        AssertUtils.isTrue(maxTotalNum > 0, "'maxTotalNum' property must be greater than 0 : " + maxTotalNum);
 
         poolConfig.setMaxTotal(maxTotalNum);
     }
@@ -204,7 +204,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @see org.apache.commons.pool2.impl.GenericObjectPool#setMaxIdle(int)
      */
     public final void setMaxIdleNum(int maxIdleNum) {
-        Assert.isTrue(maxIdleNum > 0, "'maxIdleNum' property must be greater than 0 : " + maxIdleNum);
+        AssertUtils.isTrue(maxIdleNum > 0, "'maxIdleNum' property must be greater than 0 : " + maxIdleNum);
 
         poolConfig.setMaxIdle(maxIdleNum);
     }
@@ -219,7 +219,7 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @see org.apache.commons.pool2.impl.GenericObjectPool#setMinIdle(int)
      */
     public final void setMinIdleNum(int minIdleNum) {
-        Assert.isTrue(minIdleNum > 0, "'minIdleNum' property must be greater than 0 : " + minIdleNum);
+        AssertUtils.isTrue(minIdleNum > 0, "'minIdleNum' property must be greater than 0 : " + minIdleNum);
 
         poolConfig.setMinIdle(minIdleNum);
     }
@@ -264,9 +264,9 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @see org.apache.commons.pool2.impl.GenericObjectPool#setTimeBetweenEvictionRunsMillis(long)
      */
     public final void setTimeBetweenEvictionRunsSeconds(long timeBetweenEvictionRunsSeconds) {
-        Assert.isTrue(timeBetweenEvictionRunsSeconds > 0,
-                      "'timeBetweenEvictionRunsSeconds' property must be greater than 0 : "
-                              + timeBetweenEvictionRunsSeconds);
+        AssertUtils.isTrue(timeBetweenEvictionRunsSeconds > 0,
+                           "'timeBetweenEvictionRunsSeconds' property must be greater than 0 : "
+                                   + timeBetweenEvictionRunsSeconds);
 
         poolConfig.setTimeBetweenEvictionRunsMillis(TimeUnit.SECONDS.toMillis(timeBetweenEvictionRunsSeconds));
     }
@@ -279,8 +279,8 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @see org.apache.commons.pool2.impl.GenericObjectPool#setNumTestsPerEvictionRun(int)
      */
     public final void setNumTestsPerEvictionRun(int numTestsPerEvictionRun) {
-        Assert.isTrue(numTestsPerEvictionRun > 0, "'numTestsPerEvictionRun' property must be greater than 0 : "
-                                                  + numTestsPerEvictionRun);
+        AssertUtils.isTrue(numTestsPerEvictionRun > 0, "'numTestsPerEvictionRun' property must be greater than 0 : "
+                                                       + numTestsPerEvictionRun);
 
         poolConfig.setNumTestsPerEvictionRun(numTestsPerEvictionRun);
     }
@@ -297,8 +297,9 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @see org.apache.commons.pool2.impl.GenericObjectPool#setSoftMinEvictableIdleTimeMillis(long)
      */
     public final void setMinEvictableIdleTimeMinutes(long minEvictableIdleTimeMinutes) {
-        Assert.isTrue(minEvictableIdleTimeMinutes > 0,
-                      "'minEvictableIdleTimeMinutes' property must be greater than 0 : " + minEvictableIdleTimeMinutes);
+        AssertUtils.isTrue(minEvictableIdleTimeMinutes > 0,
+                           "'minEvictableIdleTimeMinutes' property must be greater than 0 : "
+                                   + minEvictableIdleTimeMinutes);
 
         poolConfig.setSoftMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(minEvictableIdleTimeMinutes));
     }
@@ -315,8 +316,9 @@ public class CustomShardedJedisPoolFactoryBean implements FactoryBean<CustomShar
      * @see org.apache.commons.pool2.impl.GenericObjectPool#setMinEvictableIdleTimeMillis(long)
      */
     public final void setMaxEvictableIdleTimeMinutes(long maxEvictableIdleTimeMinutes) {
-        Assert.isTrue(maxEvictableIdleTimeMinutes > 0,
-                      "'maxEvictableIdleTimeMinutes' property must be greater than 0 : " + maxEvictableIdleTimeMinutes);
+        AssertUtils.isTrue(maxEvictableIdleTimeMinutes > 0,
+                           "'maxEvictableIdleTimeMinutes' property must be greater than 0 : "
+                                   + maxEvictableIdleTimeMinutes);
 
         poolConfig.setMinEvictableIdleTimeMillis(TimeUnit.MINUTES.toMillis(maxEvictableIdleTimeMinutes));
     }

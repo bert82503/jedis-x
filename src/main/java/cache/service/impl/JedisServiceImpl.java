@@ -28,13 +28,12 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import redis.client.jedis.CustomShardedJedisPool;
-import redis.clients.jedis.Jedis;
+import redis.client.util.AssertUtils;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPipeline;
@@ -91,7 +90,11 @@ public class JedisServiceImpl implements RedisService {
         }
     }
 
-    // ----------------------- Redis Command -----------------------
+    // ---------------- internal help method ----------------
+    private static void notEmptyKey(String key) {
+        AssertUtils.notEmpty(key, "'key' must not be null and empty");
+    }
+
     /**
      * 将使用完成的"分片Jedis池对象"返回给"对象池"。
      * 
@@ -110,7 +113,9 @@ public class JedisServiceImpl implements RedisService {
     // ---------------- Key (键) ----------------
     @Override
     public int expire(String key, int seconds) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -128,7 +133,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public long ttl(String key) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -146,7 +153,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int del(String key) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -165,7 +174,9 @@ public class JedisServiceImpl implements RedisService {
     // ---------------- String (字符串) ----------------
     @Override
     public String get(String key) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -183,7 +194,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String set(String key, String value) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -201,7 +214,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String setex(String key, int seconds, String value) {
-        if (enabled && StringUtils.isNotEmpty(key) && null != value) {
+        if (enabled) {
+            notEmptyKey(key);
+
             if (seconds > 0) {
                 ShardedJedis jedis = null;
                 try {
@@ -222,7 +237,9 @@ public class JedisServiceImpl implements RedisService {
     // ---------------- List (列表) ----------------
     @Override
     public int llen(String key) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -240,7 +257,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int lpush(String key, String... values) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -258,7 +277,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String rpop(String key) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -276,7 +297,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public List<String> lrange(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -294,7 +317,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String ltrim(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -318,7 +343,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zadd(String key, double score, String member, int maxLength) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 int newElementNum = 0;
@@ -361,7 +388,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zadd(String key, Map<String, Double> scoreMembers, int maxLength) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 int newElementNum = 0;
@@ -448,7 +477,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrange(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -466,7 +497,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrevrange(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -484,7 +517,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrangeByScore(String key, double min, double max) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -502,7 +537,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrangeByScore(String key, double min, double max, int offset, int count) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -520,7 +557,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrevrangeByScore(String key, double max, double min) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -538,7 +577,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public Set<String> zrevrangeByScore(String key, double max, double min, int offset, int count) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -556,7 +597,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zcard(String key) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -574,7 +617,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zremrangeByScore(String key, double min, double max) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -592,7 +637,9 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public int zremrangeByRank(String key, int start, int stop) {
-        if (enabled && StringUtils.isNotEmpty(key)) {
+        if (enabled) {
+            notEmptyKey(key);
+
             ShardedJedis jedis = null;
             try {
                 jedis = shardedJedisPool.getResource();
@@ -610,17 +657,20 @@ public class JedisServiceImpl implements RedisService {
 
     @Override
     public String info(String key, String section) {
-        ShardedJedis shardedJedis = null;
-        try {
-            shardedJedis = shardedJedisPool.getResource();
-            Jedis jedis = shardedJedis.getShard(key);
-            String info = jedis.info(section);
-            return info;
-        } catch (JedisException e) {
-            logger.error("'info' key fail, key: {}", key);
-            logger.error(e.getMessage(), e);
-        } finally {
-            close(shardedJedis);
+        if (enabled) {
+            notEmptyKey(key);
+
+            ShardedJedis shardedJedis = null;
+            try {
+                shardedJedis = shardedJedisPool.getResource();
+                String info = shardedJedis.getShard(key).info(section);
+                return info;
+            } catch (JedisException e) {
+                logger.error("'info' key fail, key: {}", key);
+                logger.error(e.getMessage(), e);
+            } finally {
+                close(shardedJedis);
+            }
         }
         return "";
     }

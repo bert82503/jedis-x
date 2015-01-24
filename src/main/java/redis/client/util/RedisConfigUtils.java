@@ -19,9 +19,6 @@ package redis.client.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.util.Assert;
-
 import redis.clients.jedis.JedisShardInfo;
 
 /**
@@ -50,31 +47,32 @@ public abstract class RedisConfigUtils {
      * @return
      */
     public static List<JedisShardInfo> parseRedisServerList(String redisServers, int timeoutMillis) {
-        Assert.notNull(redisServers, "'redisServers' param must not be null");
+        AssertUtils.notEmpty(redisServers, "'redisServers' param must not be null and empty");
 
         String[] shardInfoArray = redisServers.split(SERVER_INFO_SETPARATOR);
         List<JedisShardInfo> shards = new ArrayList<JedisShardInfo>(shardInfoArray.length);
         JedisShardInfo shard = null;
         for (String shardInfo : shardInfoArray) {
-            if (StringUtils.isNotBlank(shardInfo)) {
+            if (StringUtils.isNotEmpty(shardInfo)) {
                 shardInfo = shardInfo.trim();
                 String[] shardFieldArray = shardInfo.split(SERVER_INFO_FIELD_SETPARATOR);
-                Assert.isTrue(3 <= shardFieldArray.length && shardFieldArray.length <= 4,
-                              "'redisServers' param does not meet the 'host:port:name[:weight] [, ...]' format : "
-                                      + shardInfo);
+                AssertUtils.isTrue(3 <= shardFieldArray.length && shardFieldArray.length <= 4,
+                                   "'redisServers' param does not meet the 'host:port:name[:weight] [, ...]' format : "
+                                           + shardInfo);
 
                 String host = shardFieldArray[0];
-                Assert.isTrue(StringUtils.isNotBlank(host), "'host' field must not be empty : " + shardInfo);
+                AssertUtils.notEmpty(host, "'host' field must not be null and empty : " + shardInfo);
                 int port = Integer.parseInt(shardFieldArray[1]);
                 String name = shardFieldArray[2];
-                Assert.isTrue(StringUtils.isNotBlank(name), "'name' field must not be empty : " + shardInfo);
+                AssertUtils.notEmpty(name, "'name' field must not be null and empty : " + shardInfo);
 
                 if (3 == shardFieldArray.length) { // 未定义"节点权重"属性
                     shard = new JedisShardInfo(host, port, timeoutMillis, name);
                 } else {
                     shard = new JedisShardInfo(host, port, timeoutMillis, name);
                     // int weight = Integer.parseInt(shardFieldArray[3]);
-                    // Assert.isTrue(weight > 0, "'weight' field of 'redisServers' property must be greater than 0 : "
+                    // AssertUtils.isTrue(weight > 0,
+                    // "'weight' field of 'redisServers' property must be greater than 0 : "
                     // + weight);
                     // shard.setWeight(weight); // FIXME 该方法现在还不支持，所以现在权重只能使用默认值(1)！
                 }

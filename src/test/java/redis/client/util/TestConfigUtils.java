@@ -23,7 +23,6 @@ import java.util.Properties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
 
 import redis.client.jedis.spring.CustomShardedJedisPoolFactoryBean.PoolBehaviour;
 
@@ -72,7 +71,7 @@ public class TestConfigUtils {
      */
     public static String getRedisServers() {
         String redisServers = configList.getProperty("redis.server.list");
-        Assert.notNull(redisServers, "'redis.server.list' is not configured in '" + BIZ_SERVICE_CONFIG + "' file");
+        AssertUtils.notEmpty(redisServers, "'redis.server.list' is not configured in '" + BIZ_SERVICE_CONFIG + "' file");
         return redisServers;
     }
 

@@ -26,8 +26,8 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
 
+import redis.client.util.AssertUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisShardInfo;
 
@@ -61,7 +61,7 @@ public class JedisServerStateCheckTimerTask extends TimerTask {
      * @param pingRetryTimes PING命令的失败重试次数
      */
     public JedisServerStateCheckTimerTask(List<JedisShardInfo> jedisShards, int pingRetryTimes){
-        Assert.notEmpty(jedisShards, "'jedisShards' must be not empty");
+        AssertUtils.notEmpty(jedisShards, "'jedisShards' must not be null and empty");
         logger.debug("Initial Shard List: {}", jedisShards);
 
         this.jedisShardSet = new HashSet<JedisShardInfo>(jedisShards);
