@@ -23,11 +23,10 @@ package redis.client.util;
  * <p>
  * <font color="red">#ThreadSafe# (线程安全)</font>
  * 
- * @author huagang.li
+ * @author huagang.li 2015年1月24日 下午1:47:54
  * @see java.lang.String
  * @see org.apache.commons.lang3.StringUtils
  * @see org.springframework.util.StringUtils
- * @since 1.0
  */
 public abstract class StringUtils {
 

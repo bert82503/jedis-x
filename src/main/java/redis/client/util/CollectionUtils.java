@@ -26,11 +26,10 @@ import java.util.Collection;
  * <p>
  * <font color="red">#ThreadSafe# (线程安全)</font>
  * 
- * @author huagang.li
+ * @author huagang.li 2015年1月24日 下午1:47:13
  * @see java.util.Collection
  * @see org.apache.commons.collections4.CollectionUtils
  * @see org.springframework.util.CollectionUtils
- * @since 1.0
  */
 public abstract class CollectionUtils {
 

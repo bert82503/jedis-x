@@ -28,9 +28,8 @@ import java.util.Map;
  * <p>
  * <font color="red">#ThreadSafe# (线程安全)</font>
  * 
- * @author huagang.li
+ * @author huagang.li 2015年1月24日 下午1:46:30
  * @see org.springframework.util.Assert
- * @since 1.0
  */
 public abstract class AssertUtils {
 
@@ -38,7 +37,7 @@ public abstract class AssertUtils {
      * Assert a boolean expression, throwing {@code IllegalArgumentException} if the test result is {@code false}.
      * 
      * <pre>
-     * AssertUtils.isTrue(i > 0, "'i' must be greater than 0");
+     * AssertUtils.isTrue(i &gt; 0, &quot;'i' must be greater than 0&quot;);
      * </pre>
      * 
      * @param expression a boolean expression
@@ -57,7 +56,7 @@ public abstract class AssertUtils {
      * Assert that a {@link String} is not empty; that is, it must not be {@code null} and not the empty String.
      * 
      * <pre>
-     * AssertUtils.notEmpty(name, "'name' must not be empty");
+     * AssertUtils.notEmpty(name, &quot;'name' must not be empty&quot;);
      * </pre>
      * 
      * @param str the String to check
@@ -73,7 +72,7 @@ public abstract class AssertUtils {
      * Assert that a collection has elements; that is, it must not be {@code null} and must have at least one element.
      * 
      * <pre>
-     * AssertUtils.notEmpty(collection, "'collection' must have elements");
+     * AssertUtils.notEmpty(collection, &quot;'collection' must have elements&quot;);
      * </pre>
      * 
      * @param coll the collection to check
@@ -90,7 +89,7 @@ public abstract class AssertUtils {
      * Assert that a {@link Map} has entries; that is, it must not be {@code null} and must have at least one entry.
      * 
      * <pre>
-     * AssertUtils.notEmpty(map, "'map' must have entries");
+     * AssertUtils.notEmpty(map, &quot;'map' must have entries&quot;);
      * </pre>
      * 
      * @param map the map to check

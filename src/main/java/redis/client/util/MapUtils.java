@@ -26,10 +26,9 @@ import java.util.Map;
  * <p>
  * <font color="red">#ThreadSafe# (线程安全)</font>
  * 
- * @author huagang.li
+ * @author huagang.li 2015年1月24日 下午1:47:28
  * @see java.util.Map
  * @see org.apache.commons.collections4.MapUtils
- * @since 1.0
  */
 public abstract class MapUtils {
 
