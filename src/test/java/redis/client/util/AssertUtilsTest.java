@@ -39,8 +39,7 @@ import org.testng.annotations.Test;
 /**
  * Tests for {@link AssertUtils}.
  * 
- * @author huagang.li
- * @since 1.0
+ * @author huagang.li 2015年1月24日 下午1:50:19
  */
 public class AssertUtilsTest {
 

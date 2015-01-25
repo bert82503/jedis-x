@@ -29,8 +29,7 @@ import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import redis.client.pool.GenericTimer;
-import redis.client.pool.JedisServerStateCheckTimerTask;
+import redis.client.util.GenericTimer;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.util.Hashing;

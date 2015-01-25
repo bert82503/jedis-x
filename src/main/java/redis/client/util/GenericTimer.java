@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package redis.client.pool;
+package redis.client.util;
 
 import java.util.Timer;
 import java.util.TimerTask;

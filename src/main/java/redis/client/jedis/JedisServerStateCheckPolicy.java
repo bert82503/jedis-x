@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package redis.client.pool;
+package redis.client.jedis;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package redis.client.pool;
+package redis.client.jedis;
 
 import java.util.Collections;
 import java.util.HashSet;
