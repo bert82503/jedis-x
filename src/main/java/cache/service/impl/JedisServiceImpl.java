@@ -385,7 +385,7 @@ public class JedisServiceImpl implements RedisService {
                 if (zcardRes != null) {
                     elementNum = zcardRes.intValue();
                 }
-                if (newElementNum > 0 && elementNum > 0) {
+                if (newElementNum > 0 && elementNum > maxLength) {
                     this.asynShrinkZset(key, elementNum, maxLength);
                 }
 
@@ -451,7 +451,7 @@ public class JedisServiceImpl implements RedisService {
                 if (zcardRes != null) {
                     elementNum = zcardRes.intValue();
                 }
-                if (newElementNum > 0 && elementNum > 0) {
+                if (newElementNum > 0 && elementNum > maxLength) {
                     this.asynShrinkZset(key, elementNum, maxLength);
                 }
 
