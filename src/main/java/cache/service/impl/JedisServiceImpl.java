@@ -338,11 +338,31 @@ public class JedisServiceImpl implements RedisService {
     // ---------------- Sorted Set (有序集合) ----------------
     @Override
     public int zadd(String key, double score, String member) {
-        return this.zadd(key, score, member, DEFAULT_MAX_LENGTH);
+        if (enabled) {
+            notEmptyKey(key);
+
+            ShardedJedis jedis = null;
+            try {
+                jedis = shardedJedisPool.getResource();
+                int newElementNum = jedis.zadd(key, score, member).intValue();
+                return newElementNum;
+            } catch (JedisException e) {
+                logger.error("'zadd' key fail, key: {}, score: {}, member: {}", key, score, member);
+                logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
+            }
+        }
+        return 0;
     }
 
     @Override
-    public int zadd(String key, double score, String member, int maxLength) {
+    public int zaddAndRem(String key, double score, String member) {
+        return this.zaddAndRem(key, score, member, DEFAULT_MAX_LENGTH);
+    }
+
+    @Override
+    public int zaddAndRem(String key, double score, String member, int maxLength) {
         if (enabled) {
             notEmptyKey(key);
 
@@ -371,8 +391,29 @@ public class JedisServiceImpl implements RedisService {
 
                 return newElementNum;
             } catch (JedisException e) {
-                logger.error("'zadd' key fail, key: {}, score: {}, member: {}, maxLength: {}", key, score, member,
-                             maxLength);
+                logger.error("'zaddAndRem' key fail, key: {}, score: {}, member: {}, maxLength: {}", key, score,
+                             member, maxLength);
+                logger.error(e.getMessage(), e);
+            } finally {
+                close(jedis);
+            }
+        }
+        return 0;
+    }
+
+    // 批量增加
+    @Override
+    public int zadd(String key, Map<String, Double> scoreMembers) {
+        if (enabled) {
+            notEmptyKey(key);
+
+            ShardedJedis jedis = null;
+            try {
+                jedis = shardedJedisPool.getResource();
+                int newElementNum = jedis.zadd(key, scoreMembers).intValue();
+                return newElementNum;
+            } catch (JedisException e) {
+                logger.error("'zadd' key fail, key: {}, scoreMembers: {}", key, scoreMembers);
                 logger.error(e.getMessage(), e);
             } finally {
                 close(jedis);
@@ -382,12 +423,12 @@ public class JedisServiceImpl implements RedisService {
     }
 
     @Override
-    public int zadd(String key, Map<String, Double> scoreMembers) {
-        return this.zadd(key, scoreMembers, DEFAULT_MAX_LENGTH);
+    public int zaddAndRem(String key, Map<String, Double> scoreMembers) {
+        return this.zaddAndRem(key, scoreMembers, DEFAULT_MAX_LENGTH);
     }
 
     @Override
-    public int zadd(String key, Map<String, Double> scoreMembers, int maxLength) {
+    public int zaddAndRem(String key, Map<String, Double> scoreMembers, int maxLength) {
         if (enabled) {
             notEmptyKey(key);
 
@@ -416,7 +457,8 @@ public class JedisServiceImpl implements RedisService {
 
                 return newElementNum;
             } catch (JedisException e) {
-                logger.error("'zadd' key fail, key: {}, scoreMembers: {}, maxLength: {}", key, scoreMembers, maxLength);
+                logger.error("'zaddAndRem' key fail, key: {}, scoreMembers: {}, maxLength: {}", key, scoreMembers,
+                             maxLength);
                 logger.error(e.getMessage(), e);
             } finally {
                 close(jedis);
@@ -426,7 +468,7 @@ public class JedisServiceImpl implements RedisService {
     }
 
     /**
-     * 只有当"有序集合"长度超过阈值时，才会进行"异步缩容"操作。
+     * 只有当"有序集合"长度超过阈值({@code maxLength} + {@link RedisService#LENGTH_THRESHOLD})时，才会进行"异步缩容"操作。
      * 
      * @param key 键
      * @param maxLength 有序集合最大长度

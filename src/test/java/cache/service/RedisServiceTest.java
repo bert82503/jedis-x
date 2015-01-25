@@ -357,7 +357,7 @@ public class RedisServiceTest {
      * 通过输出zadd操作中zremrangeByRank操作的运行时间，得知一次删除100条数据的时间在 1ms之内。
      */
     @Test(description = "验证'有序集合在zadd后的长度超过阈值后，会自动进行异步缩容'的功能")
-    public void zadd() {
+    public void zaddAndRem() {
         String key = "zadd";
         int maxLength = 100;
 
@@ -366,12 +366,12 @@ public class RedisServiceTest {
 
         int size = maxLength + RedisService.LENGTH_THRESHOLD;
         for (int i = 1; i < size; i++) {
-            redisService.zadd(key, i, Integer.toString(i), maxLength);
+            redisService.zaddAndRem(key, i, Integer.toString(i), maxLength);
         }
         int elementNum = redisService.zcard(key);
         assertEquals(elementNum, 149);
 
-        redisService.zadd(key, 150, "150", maxLength);
+        redisService.zaddAndRem(key, 150, "150", maxLength);
         // 因为插入超过列表长度阈值后，会删除超过长度的元素进行列表缩容
         try {
             TimeUnit.SECONDS.sleep(1L);
@@ -395,7 +395,7 @@ public class RedisServiceTest {
         for (int i = size + 1, len = size + RedisService.LENGTH_THRESHOLD; i <= len; i++) {
             scoreMembers.put(Integer.toString(i), new Double(System.currentTimeMillis()));
         }
-        int newElementNum = redisService.zadd(key, scoreMembers, maxLength);
+        int newElementNum = redisService.zaddAndRem(key, scoreMembers, maxLength);
         assertEquals(newElementNum, RedisService.LENGTH_THRESHOLD);
         try {
             TimeUnit.SECONDS.sleep(1L);

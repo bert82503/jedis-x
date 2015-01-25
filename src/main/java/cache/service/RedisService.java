@@ -66,7 +66,7 @@ public interface RedisService extends SwitchService {
      * <p>
      * 时间复杂度: O(1)<br>
      * EXPIRE key seconds - http://redis.io/commands/expire
-     *
+     * 
      * @param key 键
      * @param seconds 生存时间(秒数)
      * @return 当超时设置成功时，返回1；当key不存在或者不能为key设置生存时间时，返回0。
@@ -217,7 +217,7 @@ public interface RedisService extends SwitchService {
      * <p>
      * 时间复杂度: O(1)<br>
      * LLEN key - http://redis.io/commands/llen
-     *
+     * 
      * @param key 键
      * @return 列表key的长度。
      */
@@ -245,7 +245,7 @@ public interface RedisService extends SwitchService {
      * <p>
      * 时间复杂度: O(1)<br>
      * RPOP key - http://redis.io/commands/rpop
-     *
+     * 
      * @param key 键
      * @return 当列表不为空时，返回列表的表尾元素；当key不存在或列表为空时，返回null。
      */
@@ -299,7 +299,7 @@ public interface RedisService extends SwitchService {
      * <p>
      * 时间复杂度: O(N)，N为被移除的元素的数量<br>
      * LTRIM key start stop - http://redis.io/commands/ltrim
-     *
+     * 
      * @param key 键
      * @param start 起始下标
      * @param stop 结束下标
@@ -319,8 +319,7 @@ public interface RedisService extends SwitchService {
     // 可见，原本可能很大的N被很关键的Log了一下，1000万大小的Set，复杂度也只是几十不到。当然，如果一次命中很多元素，M很大那谁也没办法了。
     // =======================================================
     /**
-     * 将所有给定member元素及其score值加入到有序集key中。(默认最大长度为{@link #DEFAULT_MAX_LENGTH})<br>
-     * 如果有序集的长度超过"默认最大长度({@link #DEFAULT_MAX_LENGTH})"，则会自动进行"异步缩容"操作，删除那些最老的元素。<br>
+     * 将所有给定member元素及其score值加入到有序集key中。(有序集长度无界)<br>
      * 如果某个member已经是有序集的成员，那么更新这个member的score值，并通过重新插入这个member元素，来保证该member在正确的位置上。
      * <p>
      * 如果key不存在，则创建一个空的有序集并执行ZADD操作。当key存在但不是有序集类型时，返回一个错误。
@@ -336,10 +335,27 @@ public interface RedisService extends SwitchService {
     int zadd(String key, double score, String member);
 
     /**
+     * 将所有给定member元素及其score值加入到有序集key中。(默认最大长度为{@link #DEFAULT_MAX_LENGTH})<br>
+     * 如果有序集的长度超过"默认最大长度({@link #DEFAULT_MAX_LENGTH})"，则会自动进行"异步缩容"操作，删除那些最老的元素。<br>
+     * 如果某个member已经是有序集的成员，那么更新这个member的score值，并通过重新插入这个member元素，来保证该member在正确的位置上。
+     * <p>
+     * 如果key不存在，则创建一个空的有序集并执行ZADD操作。当key存在但不是有序集类型时，返回一个错误。
+     * <p>
+     * 时间复杂度: O(log(N))，N是有序集的基数，M为成功添加的新成员的数量<br>
+     * ZADD key score member [score member ...] - http://redis.io/commands/zadd
+     * 
+     * @param key 键
+     * @param score 元素的分数
+     * @param member 元素
+     * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
+     */
+    int zaddAndRem(String key, double score, String member);
+
+    /**
      * 将所有给定member元素及其score值加入到有序集key中。<br>
      * 如果有序集的长度超过"最大长度阈值({@code maxLength})"参数，则会自动进行"异步缩容"操作，删除那些最老的元素。
      * <p>
-     * 见{@link #zadd(String, double, String)}文档注释。
+     * 见{@link #zaddAndRem(String, double, String)}文档注释。
      * 
      * @param key 键
      * @param score 元素的分数
@@ -347,12 +363,11 @@ public interface RedisService extends SwitchService {
      * @param maxLength 最大长度阈值
      * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
      */
-    int zadd(String key, double score, String member, int maxLength);
+    int zaddAndRem(String key, double score, String member, int maxLength);
 
     // 批量增加
     /**
-     * 将"member元素及其score值"加入到有序集key中。(默认最大长度为{@link #DEFAULT_MAX_LENGTH})<br>
-     * 如果有序集的长度超过"默认最大长度({@link #DEFAULT_MAX_LENGTH})"，则会自动进行"异步缩容"操作，删除那些最老的元素。
+     * 将"member元素及其score值"加入到有序集key中。(有序集长度无界)<br>
      * <p>
      * 见{@link #zadd(String, double, String)}文档注释。
      * 
@@ -363,17 +378,29 @@ public interface RedisService extends SwitchService {
     int zadd(String key, Map<String, Double> scoreMembers);
 
     /**
+     * 将"member元素及其score值"加入到有序集key中。(默认最大长度为{@link #DEFAULT_MAX_LENGTH})<br>
+     * 如果有序集的长度超过"默认最大长度({@link #DEFAULT_MAX_LENGTH})"，则会自动进行"异步缩容"操作，删除那些最老的元素。
+     * <p>
+     * 见{@link #zaddAndRem(String, double, String)}文档注释。
+     * 
+     * @param key 键
+     * @param scoreMembers {@literal <元素, 元素的分数>}的映射表
+     * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
+     */
+    int zaddAndRem(String key, Map<String, Double> scoreMembers);
+
+    /**
      * 将"member元素及其score值的映射表"加入到有序集key中。<br>
      * 如果有序集的长度超过"最大长度阈值({@code maxLength})"参数，则会自动进行"异步缩容"操作，删除那些最老的元素。
      * <p>
-     * 见{@link #zadd(String, double, String)}文档注释。
+     * 见{@link #zaddAndRem(String, double, String)}文档注释。
      * 
      * @param key 键
      * @param scoreMembers {@literal <元素, 元素的分数>}的映射表
      * @param maxLength 最大长度阈值
      * @return 被成功添加的新成员的数量，不包括那些被更新的、已经存在的成员。
      */
-    int zadd(String key, Map<String, Double> scoreMembers, int maxLength);
+    int zaddAndRem(String key, Map<String, Double> scoreMembers, int maxLength);
 
     /**
      * 返回有序集key中，指定区间内的成员。
