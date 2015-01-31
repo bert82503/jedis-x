@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class JedisServerStateCheckTimerTask extends TimerTask {
 
     private static final Logger                        logger = LoggerFactory.getLogger(JedisServerStateCheckTimerTask.class);
 
-    /** 正常活跃的Jedis分片节点信息列表 */
+    /** 活跃的Jedis分片节点信息列表 */
     private final Set<JedisShardInfo>                  jedisShardSet;
 
     /** PING命令的失败重试次数 */
@@ -49,10 +50,12 @@ public class JedisServerStateCheckTimerTask extends TimerTask {
     /*
      * "异常节点的自动摘除和恢复添加"维护表
      */
-    /** 正常可用的Jedis分片资源节点映射表 */
+    /** 活跃的Jedis分片资源节点映射表 */
     private final ConcurrentMap<Jedis, JedisShardInfo> activeShardMap;
     /** 异常的Jedis分片资源节点映射表 */
     private final ConcurrentMap<Jedis, JedisShardInfo> brokenShardMap;
+    /** "活跃的节点列表是否有更新"标识 */
+    private final AtomicBoolean                        activeShardListUpdated;
 
     /**
      * 创建一个"Redis服务器状态检测"定时任务对象。
@@ -64,11 +67,11 @@ public class JedisServerStateCheckTimerTask extends TimerTask {
         AssertUtils.notEmpty(jedisShards, "'jedisShards' must not be null and empty");
         logger.debug("Initial Shard List: {}", jedisShards);
 
-        this.jedisShardSet = new HashSet<JedisShardInfo>(jedisShards);
+        jedisShardSet = new HashSet<JedisShardInfo>(jedisShards.size());
+        jedisShardSet.addAll(jedisShards);
         this.pingRetryTimes = pingRetryTimes;
 
-        int initialCapacity = jedisShards.size() * 4 / 3 + 1;
-        activeShardMap = new ConcurrentHashMap<Jedis, JedisShardInfo>(initialCapacity);
+        activeShardMap = new ConcurrentHashMap<Jedis, JedisShardInfo>(jedisShards.size());
         for (JedisShardInfo jedisShard : jedisShards) {
             Jedis jedis = jedisShard.createResource();
             activeShardMap.put(jedis, jedisShard);
@@ -76,6 +79,7 @@ public class JedisServerStateCheckTimerTask extends TimerTask {
         logger.debug("Initial active Shard map: {}", activeShardMap.values());
 
         brokenShardMap = new ConcurrentHashMap<Jedis, JedisShardInfo>(4);
+        activeShardListUpdated = new AtomicBoolean(false);
     }
 
     /**
@@ -95,6 +99,7 @@ public class JedisServerStateCheckTimerTask extends TimerTask {
 
                     jedisShardSet.add(activeShard);
                     activeShardMap.put(jedis, activeShard);
+                    activeShardListUpdated.compareAndSet(false, true);
 
                     logger.debug("Active Shard list after a normal Redis server added: {}", jedisShardSet);
                     logger.debug("Active Shard map after a normal Redis server added: {}", activeShardMap.values());
@@ -113,6 +118,7 @@ public class JedisServerStateCheckTimerTask extends TimerTask {
                     jedis.close();
                     jedisShardSet.remove(brokenShard);
                     brokenShardMap.put(jedis, brokenShard);
+                    activeShardListUpdated.compareAndSet(false, true);
 
                     logger.debug("Active Shard list after a broken Redis server removed: {}", jedisShardSet);
                     logger.debug("Active Shard map after a broken Redis server removed: {}", activeShardMap.values());
@@ -122,11 +128,21 @@ public class JedisServerStateCheckTimerTask extends TimerTask {
     }
 
     /**
+     * 探测"正常活跃的节点列表是否有更新"。
+     * 
+     * @return
+     */
+    public boolean isActiveShardListUpdated() {
+        return activeShardListUpdated.get();
+    }
+
+    /**
      * 获取所有正常活跃的Jedis分片节点信息列表。
      * 
      * @return
      */
     public Set<JedisShardInfo> getAllActiveJedisShards() {
+        activeShardListUpdated.compareAndSet(true, false);
         return Collections.unmodifiableSet(jedisShardSet);
     }
 

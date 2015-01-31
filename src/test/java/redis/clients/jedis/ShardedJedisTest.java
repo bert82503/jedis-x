@@ -48,7 +48,8 @@ public class ShardedJedisTest {
             Collection<JedisShardInfo> allClusterShardInfos = shardedJedis.getAllShardInfo();
             assertEquals(allClusterShardInfos.size(), 160 * shardInfos.size()); // 返回的集群节点数量被放大了 160 倍
             // 过滤所有重复的Shard信息
-            Set<JedisShardInfo> checkedShards = new HashSet<>(allClusterShardInfos);
+            Set<JedisShardInfo> checkedShards = new HashSet<>(shardInfos.size());
+            checkedShards.addAll(allClusterShardInfos);
             // 列表大小和所有元素都必须是完全一样的
             assertEquals(checkedShards.size(), shardInfos.size());
             assertTrue(checkedShards.containsAll(shardInfos));

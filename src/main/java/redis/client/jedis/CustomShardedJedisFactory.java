@@ -30,6 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import redis.client.util.GenericTimer;
+import redis.clients.jedis.Client;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.util.Hashing;
@@ -45,6 +47,8 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
 
     /** 正常活跃的Jedis分片节点信息列表 */
     private List<JedisShardInfo>           shards;
+    /** 初始的Jedis分片节点信息列表大小 */
+    private final int                      originalShardListSize;
     /** 哈希算法 */
     private final Hashing                  algo;
     /** 键标记模式 */
@@ -71,6 +75,7 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
     public CustomShardedJedisFactory(List<JedisShardInfo> shards, Hashing algo, Pattern keyTagPattern,
                                      int timeBetweenServerStateCheckRunsMillis, int pingRetryTimes){
         this.shards = shards;
+        this.originalShardListSize = shards.size();
         this.algo = algo;
         this.keyTagPattern = keyTagPattern;
 
@@ -101,8 +106,8 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
      */
     @Override
     public PooledObject<ShardedJedis> makeObject() throws Exception {
-        ShardedJedis jedis = new ShardedJedis(shards, algo, keyTagPattern);
-        return new DefaultPooledObject<ShardedJedis>(jedis);
+        ShardedJedis shardedJedis = new ShardedJedis(shards, algo, keyTagPattern);
+        return new DefaultPooledObject<ShardedJedis>(shardedJedis);
     }
 
     /**
@@ -113,39 +118,72 @@ public class CustomShardedJedisFactory implements PooledObjectFactory<ShardedJed
     @Override
     public void destroyObject(PooledObject<ShardedJedis> pooledShardedJedis) throws Exception {
         final ShardedJedis shardedJedis = pooledShardedJedis.getObject();
-        shardedJedis.disconnect();
+
+        // shardedJedis.disconnect(); // "链接资源"无法被释放，存在泄露
+        for (Jedis jedis : shardedJedis.getAllShards()) {
+            try {
+                // 1. 请求服务端关闭连接
+                jedis.quit();
+            } catch (Exception e) {
+                // ignore the exception node, so that all other normal nodes can release all connections.
+
+                // java.lang.ClassCastException: java.lang.Long cannot be cast to [B
+                // (zadd/zcard 返回 long 类型，而 quit 返回 string 类型。从这里看，上一次的请求结果并未读取)
+                logger.warn("quit jedis connection for server fail: " + toServerString(jedis), e);
+            }
+
+            try {
+                // 2. 客户端主动关闭连接
+                jedis.disconnect();
+            } catch (Exception e) {
+                // ignore the exception node, so that all other normal nodes can release all connections.
+
+                logger.warn("disconnect jedis connection fail: " + toServerString(jedis), e);
+            }
+        }
+    }
+
+    /**
+     * <pre>
+     * 返回格式
+     *      host:port
+     * </pre>
+     */
+    private static String toServerString(Jedis jedis) {
+        final Client client = jedis.getClient();
+        return client.getHost() + ':' + client.getPort();
     }
 
     /**
      * 校验整个{@link ShardedJedis}集群中所有的Jedis链接是否正常。
      * <p>
-     * <font color="red">这个操作是挺耗时的！</font>
+     * <font color="red">该方法的原实现是对集群中的所有节点进行'PING'探测来保证"分片Jedis池对象"是有效的，但这样是挺耗时的！</font>
      * <p>
      * {@inheritDoc}
      */
     @Override
     public boolean validateObject(PooledObject<ShardedJedis> pooledShardedJedis) {
-        ShardedJedis shardedJedis = pooledShardedJedis.getObject();
-        // FIXME "Sharded.getAllShardInfo() returns 160*shards info list not returns the original shards list"
+        final ShardedJedis shardedJedis = pooledShardedJedis.getObject();
+        // "Sharded.getAllShardInfo() returns 160*shards info list not returns the original shards list"
         // https://github.com/xetorthio/jedis/issues/837
         Collection<JedisShardInfo> allClusterShardInfos = shardedJedis.getAllShardInfo(); // 返回的集群节点数量被放大了160倍，详见ShardedJedisTest.getAllShardInfo()测试用例
         // 过滤所有重复的Shard信息
-        Set<JedisShardInfo> checkedShards = new HashSet<JedisShardInfo>(allClusterShardInfos);
+        Set<JedisShardInfo> checkedShards = new HashSet<JedisShardInfo>(originalShardListSize);
+        checkedShards.addAll(allClusterShardInfos);
         logger.debug("Active Shard list for current validated sharded Jedis: {}", checkedShards);
 
-        Set<JedisShardInfo> activeShards = serverStateCheckTimerTask.getAllActiveJedisShards();
-        if (checkedShards.size() != activeShards.size()) { // 节点数不一样
-            logger.debug("Find a pooled sharded Jedis is updated");
-
-            shards = new ArrayList<JedisShardInfo>(activeShards);
+        // 探测"正常活跃的节点列表是否有更新"
+        if (serverStateCheckTimerTask.isActiveShardListUpdated()) {
+            shards = new ArrayList<JedisShardInfo>(serverStateCheckTimerTask.getAllActiveJedisShards());
             logger.debug("Active Shard list after updated: {}", shards);
+        }
+
+        if (checkedShards.size() != shards.size()) { // 节点数不一样
+            logger.debug("Find a pooled sharded Jedis is updated: {}", checkedShards);
             return false;
         } else { // 尽管节点数相同，但可能真实的节点列表是不同的(如，一台节点恢复正常了，正好另一台节点出现了异常)
-            if (!activeShards.containsAll(checkedShards)) {
-                logger.debug("Find a pooled sharded Jedis is updated");
-
-                shards = new ArrayList<JedisShardInfo>(activeShards);
-                logger.debug("Active Shard list after updated: {}", shards);
+            if (!checkedShards.containsAll(shards)) {
+                logger.debug("Find a pooled sharded Jedis is updated: {}", checkedShards);
                 return false;
             }
         }

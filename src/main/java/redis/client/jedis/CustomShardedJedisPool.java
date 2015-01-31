@@ -110,10 +110,10 @@ public class CustomShardedJedisPool extends Pool<ShardedJedis> {
      * JedisException}异常。
      */
     @Override
-    public void returnResource(ShardedJedis resource) {
-        if (resource != null) {
-            resource.resetState();
-            this.returnResourceObject(resource);
+    public void returnResource(ShardedJedis jedis) {
+        if (jedis != null) {
+            jedis.resetState();
+            this.returnResourceObject(jedis);
         }
     }
 
@@ -124,9 +124,9 @@ public class CustomShardedJedisPool extends Pool<ShardedJedis> {
      * JedisException}异常。
      */
     @Override
-    public void returnBrokenResource(ShardedJedis resource) {
-        if (resource != null) {
-            this.returnBrokenResourceObject(resource);
+    public void returnBrokenResource(ShardedJedis jedis) {
+        if (jedis != null) {
+            this.returnBrokenResourceObject(jedis);
         }
     }
 

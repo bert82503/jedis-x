@@ -37,7 +37,7 @@ public abstract class AssertUtils {
      * Assert a boolean expression, throwing {@code IllegalArgumentException} if the test result is {@code false}.
      * 
      * <pre>
-     * AssertUtils.isTrue(i &gt; 0, &quot;'i' must be greater than 0&quot;);
+     * AssertUtils.isTrue(i > 0, "'i' must be greater than 0");
      * </pre>
      * 
      * @param expression a boolean expression
@@ -56,7 +56,7 @@ public abstract class AssertUtils {
      * Assert that a {@link String} is not empty; that is, it must not be {@code null} and not the empty String.
      * 
      * <pre>
-     * AssertUtils.notEmpty(name, &quot;'name' must not be empty&quot;);
+     * AssertUtils.notEmpty(name, "'name' must not be empty");
      * </pre>
      * 
      * @param str the String to check
@@ -72,7 +72,7 @@ public abstract class AssertUtils {
      * Assert that a collection has elements; that is, it must not be {@code null} and must have at least one element.
      * 
      * <pre>
-     * AssertUtils.notEmpty(collection, &quot;'collection' must have elements&quot;);
+     * AssertUtils.notEmpty(collection, "'collection' must have elements");
      * </pre>
      * 
      * @param coll the collection to check
@@ -89,7 +89,7 @@ public abstract class AssertUtils {
      * Assert that a {@link Map} has entries; that is, it must not be {@code null} and must have at least one entry.
      * 
      * <pre>
-     * AssertUtils.notEmpty(map, &quot;'map' must have entries&quot;);
+     * AssertUtils.notEmpty(map, "'map' must have entries");
      * </pre>
      * 
      * @param map the map to check
